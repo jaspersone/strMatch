@@ -170,17 +170,17 @@ public class strMatch {
     	for (int i = 0; i < pattern.length(); i++) {
     		byte b = (byte)pattern.charAt(i);
     		
-    		patHash <<= 1;
     		// Our string is base 256, so each digit is 256^i where
     		// 0 <= i <= n, where is the length the string.
-    		patHash |= /*fastExp(256, i, 997L)**/(long)b;
+    	    int exponent = (i * 8) % 55;
+    	    patHash += ((long)Math.pow(2.0, exponent))*(long)b;
     	}
 
     	int chunkCount = pattern.length();
     	boolean patternFound = false;
     	String scope = fillUpScopeBuffer(chunkCount, source); // fill up the scope buffer
 
-    	System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + patHash + " <<<");
+    	System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
 // 		REFACTOR WITH RING:    	
 //        byte[] scope = new byte[chunkCount];
 //        int    scopeHead = 0, scopeTail = 0;
@@ -198,19 +198,35 @@ public class strMatch {
 
     		// Our string is base 256, so each digit is 256^i where
     		// 0 <= i <= n, where is the length the string.
-    		srcHash <<= 1;
-    		srcHash |= /*fastExp(256, i, 997L)**/(long)b;
+    	    int exponent = (i * 8) % 55;
+    	    srcHash += ((long)Math.pow(2.0, exponent))*(long)b;
+    		assert((long)b >= 0);
     		//prevByte = b;
     	}
     	
+    	System.out.println("scope=" + scope);
+    	System.out.println("Expected srcHash=" + srcHash);
+
     	//prevByte = ;
     	
     	// go through the source and search for the pattern
     	while(!patternFound) {
     		//System.out.println(scope);
-    		
+//    		srcHash = 0;
+//        	// Generate the hash value for the pattern
+//        	for (int i = 0; i < scope.length(); i++) {
+//        		byte b = (byte)scope.charAt(i);
+//
+//        		// Our string is base 256, so each digit is 256^i where
+//        		// 0 <= i <= n, where is the length the string.
+//        		srcHash <<= 8;
+//        		srcHash |= /*fastExp(256, i, 997L)**/(long)b;
+//        		assert((long)b >= 0);
+//        		//prevByte = b;
+//        	}
+        	
     		if (pattern.equals(scope) && srcHash != patHash) {
-    			System.out.println("HASH srcHash=" + srcHash + " patHash=" + patHash);
+    			System.out.println("HASH srcHash=" + Long.toHexString(srcHash) + " patHash=" + Long.toHexString(patHash));
     		}
     		// compare scope so far
     		if (srcHash == patHash) {
@@ -247,6 +263,8 @@ public class strMatch {
 	    			b = 0x0D;
 	    		}
 
+	    		srcHash -= (long)scope.charAt(0);
+	    		
 	    		scope = scope.substring(1) + (char)b;
     			prevByte = readByte;
                 
@@ -255,9 +273,31 @@ public class strMatch {
     			// Divide by 256 and append the next byte for the updated
     			// rolling hash function
     			//srcHash >>>= 8;
-    			srcHash >>>= 1;//(long)prevByte;
-    			srcHash = /*fastExp(256, pattern.length()-1, 997L)**/(long)b;
-    			
+    			srcHash /= 256;//(long)prevByte;
+
+    		long asrcHash = 0;
+        	// Generate the hash value for the pattern
+        	for (int i = 0; i < scope.length()-1; i++) {
+        		byte ba = (byte)scope.charAt(i);
+
+        		// Our string is base 256, so each digit is 256^i where
+        		// 0 <= i <= n, where is the length the string.
+        	    int exponent = (i * 8) % 55;
+        	    asrcHash += ((long)Math.pow(2.0, exponent))*(long)ba;
+
+//        		asrcHash += fastExp(256, i, 997L)*(long)ba;
+        		assert((long)ba >= 0);
+        		//prevByte = b;
+        	}
+        	System.out.println("scope=" + scope);
+        	System.out.println("Expected srcHash=" + Long.toHexString(asrcHash) + " srcHash=" + Long.toHexString(srcHash));
+        	assert(asrcHash == srcHash);
+        	
+    		    //srcHash += fastExp(256, pattern.length()-1, 997L)*(long)b;
+        	    
+        	    int exponent = ((pattern.length() - 1) * 8) % 55;
+        	    srcHash += ((long)Math.pow(2.0, exponent))*(long)b;
+    			assert((long)b >= 0);
     		} catch (EOFException fu) {
             	System.out.println("Last chance to find the pattern");
             	break;
