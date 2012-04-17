@@ -8,7 +8,8 @@ import java.util.Arrays;
 
 
 public class strMatch {
-	
+	static boolean TESTING = false;
+
     // begin McClure driving
 	/**
      * Helper function for fast exponentiation
@@ -52,42 +53,39 @@ public class strMatch {
     }
     // end McClure driving
     
-    private static boolean bruteForceMatch(String pattern, DataInputStream source)
+    /**
+     * Grabs the first chunk of chars from the source file to kick off several types
+     * of string matching algorithms
+     * 
+     * Arguments:
+     * @param chunkCount - the size of the chunk that needs to be grabbed 
+     * @param source - the source file from which to grab chunks
+     * @return a string, of the first scope of length chunkCount
+     */
+    protected static String fillUpScopeBuffer(int chunkCount, DataInputStream source)
     {
-    	int     chunkCount = pattern.length();
-    	boolean patternFound = false;
-    	String  scope = new String("");
-        byte 	prevByte = 0x00;
-        
-    	System.out.println("Brute Force pattern = " + pattern);
-// 		REFACTOR WITH RING:    	
-//        byte[] scope = new byte[chunkCount];
-//        int    scopeHead = 0, scopeTail = 0;
-//        scopeHead += (scopeHead +1) % chunkCount;
-//        
-//        
-//        scopeTail += (scopeTail +1) % chunkCount;
-        
-    	// fill up the scope buffer
+    	assert(chunkCount > 0);
+    	String	scope		= "";
+    	byte 	prevByte 	= 0x00;
     	try {
 			for (int i = 0; i < chunkCount; i++) {
-				byte readByte = source.readByte();
-				byte b = readByte;
+				byte currentByte = source.readByte();
+				byte byteToAdd = currentByte; // assume you want to add current byte
 				
 	    		// Windows uses two characters to represent a text 
 	    		// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
 	    		// itself, so convert 0x0A to 0x0D, and absorb
 	    		// trailing 0x0A if this is a windows newline encoding
 	    		//
-	    		if ((b == 0x0A) && (prevByte == 0x0D)) {
+	    		if ((currentByte == 0x0A) && (prevByte == 0x0D)) {
 	    			// Ignore
-	    			b = source.readByte();
-	    		} else if ((b == 0x0A) && (prevByte != 0x0D)) {
+	    			byteToAdd = source.readByte();
+	    		} else if ((currentByte == 0x0A) && (prevByte != 0x0D)) {
 	    			// Convert all independent 0x0A to 0x0D
-	    			b = 0x0D;
+	    			byteToAdd = 0x0D;
 	    		}
-				scope += (char)b;
-				prevByte = readByte;
+				scope += (char)byteToAdd;
+				prevByte = currentByte;
 			}
 			// TODO Auto-generated catch block
     	} catch (EOFException fu) {
@@ -95,9 +93,26 @@ public class strMatch {
         } catch (IOException e) {
         	e.printStackTrace();
         }
-    	
-    	prevByte = 0x00;
-    	
+    	assert(scope.length() == chunkCount);
+    	return scope;
+    }
+    
+    protected static boolean bruteForceMatch(String pattern, DataInputStream source)
+    {
+    	System.out.println(">>> Brute Force Pattern Match <<<");
+    	int     chunkCount = pattern.length();
+    	boolean patternFound = false;
+    	String  scope = fillUpScopeBuffer(chunkCount, source); // fill up the scope buffer
+        byte 	prevByte = 0x00;
+
+// 		REFACTOR WITH RING:    	
+//        byte[] scope = new byte[chunkCount];
+//        int    scopeHead = 0, scopeTail = 0;
+//        scopeHead += (scopeHead +1) % chunkCount;
+//        
+//        
+//        scopeTail += (scopeTail +1) % chunkCount;
+
     	// go through the source and search for the pattern
     	while(!patternFound) {
     		// compare scope so far
@@ -108,7 +123,7 @@ public class strMatch {
     			i++;
     		}
 	    	if (i == chunkCount) {
-	    		System.out.println(">>>> PATTERN FOUND!!! YES!!!");
+	    		System.out.println("PATTERN FOUND!!! YES!!!");
 				patternFound = true;
 			}
     		// try to shift the scope
@@ -145,7 +160,7 @@ public class strMatch {
     	return patternFound;
     }
     
-    private static boolean rabinKarpMatch(String pattern, DataInputStream source)
+    protected static boolean rabinKarpMatch(String pattern, DataInputStream source)
     {
     	long srcHash = 0;
     	long patHash = 0;
@@ -163,9 +178,9 @@ public class strMatch {
 
     	int chunkCount = pattern.length();
     	boolean patternFound = false;
-    	String scope = new String("");
+    	String scope = fillUpScopeBuffer(chunkCount, source); // fill up the scope buffer
 
-    	System.out.println("Rabin Karp pattern = " + pattern + " patHash=" + patHash);
+    	System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + patHash + " <<<");
 // 		REFACTOR WITH RING:    	
 //        byte[] scope = new byte[chunkCount];
 //        int    scopeHead = 0, scopeTail = 0;
@@ -173,35 +188,6 @@ public class strMatch {
 //        
 //        
 //        scopeTail += (scopeTail +1) % chunkCount;
-        
-    	// fill up the scope buffer
-    	try {
-			for (int i = 0; i < chunkCount; i++) {
-				byte readByte = source.readByte();
-				byte b = readByte;
-				
-	    		// Windows uses two characters to represent a text 
-	    		// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-	    		// itself, so convert 0x0A to 0x0D, and absorb
-	    		// trailing 0x0A if this is a windows newline encoding
-	    		//
-	    		if ((b == 0x0A) && (prevByte == 0x0D)) {
-	    			// Ignore
-	    			b = source.readByte();
-	    		} else if ((b == 0x0A) && (prevByte != 0x0D)) {
-	    			// Convert all independent 0x0A to 0x0D
-	    			b = 0x0D;
-	    		}
-				
-				scope += (char)b;
-				prevByte = readByte;
-			}
-			// TODO Auto-generated catch block
-    	} catch (EOFException fu) {
-        	System.out.println("Got to end of file without finding pattern");
-        } catch (IOException e) {
-        	e.printStackTrace();
-        }
 
     	// Reinitialize the srcHash SUM
 		srcHash = 0;
@@ -224,7 +210,6 @@ public class strMatch {
     		//System.out.println(scope);
     		
     		if (pattern.equals(scope) && srcHash != patHash) {
-    			System.out.println("What are we comparing: " + pattern);
     			System.out.println("HASH srcHash=" + srcHash + " patHash=" + patHash);
     		}
     		// compare scope so far
@@ -239,7 +224,7 @@ public class strMatch {
         		}
 
     			if (i == chunkCount) {
-    	    		System.out.println(">>>> PATTERN FOUND!!! YES!!!");
+    	    		System.out.println("PATTERN FOUND!!! YES!!!");
     				patternFound = true;
     			}
     		}
@@ -284,13 +269,15 @@ public class strMatch {
     	return patternFound;
     }
     
-    private static boolean kmpMatch(String pattern, DataInputStream source)
+    protected static boolean kmpMatch(String pattern, DataInputStream source)
     {
+    	System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
     	return false;
     }
 
-    private static boolean bmooreMatch(String pattern, DataInputStream source)
+    protected static boolean bmooreMatch(String pattern, DataInputStream source)
     {
+    	System.out.println(">>> Boyer-Moore Pattern Match <<<");
     	return false;
     }
     
@@ -360,6 +347,10 @@ public class strMatch {
 			    
 			    // Now we have the pattern, so store it in the strPattern
 			    strPattern = strTmp.toString();
+			    
+			    System.out.println("***************************************");
+			    System.out.println("* Search for '" + strPattern + "'");
+			    System.out.println("***************************************");
 			    
 			    if (strPattern.length() > 0) { // do nothing if the string is empty
 				    // Brute Force String Matching algorithm
