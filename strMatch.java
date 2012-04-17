@@ -382,6 +382,22 @@ public class strMatch {
     	}
     	return result;
     }
+
+    /**
+     * 
+     * @param pattern
+     * @return
+     */
+    protected static int[] goodSuffixHeuristic(String pattern) {
+    	int[]	c = buildCoreTable(pattern);
+    	int[]   b = new int[c.length];
+    	
+    	for (int i = 0; i < c.length; i++) {
+    		b[i] = pattern.length() - c[i];
+    	}
+    	
+    	return b;
+    }
     
     protected static boolean bmooreMatch(String pattern, DataInputStream source)
     {
@@ -423,8 +439,7 @@ public class strMatch {
 	    		    		badSymbolHeuristic = j;
 	    		    	}
 	    				
-	    				// get good suffix heuristic value
-	    				
+	    				// get good suffix heuristic value	    				
 	    				
 	    				bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
 	    			}
@@ -443,8 +458,6 @@ public class strMatch {
 			}
     	}
     	return patternFound;
-    }
-
     }
     
 	/**
@@ -518,7 +531,10 @@ public class strMatch {
 				    System.out.println("***************************************");
 				    System.out.println("* Search for '" + strPattern + "'");
 				    System.out.println("***************************************");
-			    	
+
+					sinput = new FileInputStream(sourceFileName);
+					s = new DataInputStream(sinput); 
+
 			    	// Brute Force String Matching algorithm
 				    if (bruteForceMatch(strPattern, s))
 				    	System.out.println("BF MATCHED: " + strPattern);
@@ -560,6 +576,9 @@ public class strMatch {
 				    	System.out.println("BM MATCHED: " + strPattern);
 				    else
 				    	System.out.println("BM FAILED: " + strPattern);
+				    
+				    s.close();
+				    sinput.close();
 			    }
 			} // LOOP to next pattern
 	
