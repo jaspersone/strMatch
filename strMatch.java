@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 
 
 public class strMatch {
@@ -62,7 +63,7 @@ public class strMatch {
      * @param source - the source file from which to grab chunks
      * @return a string, of the first scope of length chunkCount
      */
-    protected static String fillUpScopeBuffer(int chunkCount, DataInputStream source)
+    protected static String getNextChunkCountChars(int chunkCount, DataInputStream source)
     {
     	assert(chunkCount > 0);
     	String	scope		= "";
@@ -93,25 +94,22 @@ public class strMatch {
         } catch (IOException e) {
         	e.printStackTrace();
         }
-    	assert(scope.length() == chunkCount);
     	return scope;
     }
     
+    /**
+     * 
+     * @param pattern
+     * @param source
+     * @return
+     */
     protected static boolean bruteForceMatch(String pattern, DataInputStream source)
     {
     	System.out.println(">>> Brute Force Pattern Match <<<");
     	int     chunkCount = pattern.length();
     	boolean patternFound = false;
-    	String  scope = fillUpScopeBuffer(chunkCount, source); // fill up the scope buffer
+    	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
         byte 	prevByte = 0x00;
-
-// 		REFACTOR WITH RING:    	
-//        byte[] scope = new byte[chunkCount];
-//        int    scopeHead = 0, scopeTail = 0;
-//        scopeHead += (scopeHead +1) % chunkCount;
-//        
-//        
-//        scopeTail += (scopeTail +1) % chunkCount;
 
     	// go through the source and search for the pattern
     	while(!patternFound) {
@@ -160,6 +158,16 @@ public class strMatch {
     	return patternFound;
     }
     
+    /**
+     * Simple Rabin-Karp pattern matching using summation algorithm.  Since
+     * we are using longs, the maximum sum we can have is 256+256+...+256 for
+     * 2^55 times, and we can assume that this data set is intractable for 
+     * computational time.  
+     * 
+     * @param pattern
+     * @param source
+     * @return
+     */
     protected static boolean rabinKarpMatch(String pattern, DataInputStream source)
     {
     	long srcHash = 0;
@@ -169,39 +177,21 @@ public class strMatch {
     	// Generate the hash value for the pattern
     	for (int i = 0; i < pattern.length(); i++) {
     		byte b = (byte)pattern.charAt(i);
-    		
-    		// Our string is base 256, so each digit is 256^i where
-    		// 0 <= i <= n, where is the length the string.
-    	    int exponent = (i * 8) % 55;
-    	    patHash += ((long)Math.pow(2.0, exponent))*(long)b;
+    	    patHash += (long)b;
     	}
 
     	int chunkCount = pattern.length();
     	boolean patternFound = false;
-    	String scope = fillUpScopeBuffer(chunkCount, source); // fill up the scope buffer
+    	String scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
 
     	System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
-// 		REFACTOR WITH RING:    	
-//        byte[] scope = new byte[chunkCount];
-//        int    scopeHead = 0, scopeTail = 0;
-//        scopeHead += (scopeHead +1) % chunkCount;
-//        
-//        
-//        scopeTail += (scopeTail +1) % chunkCount;
 
-    	// Reinitialize the srcHash SUM
-		srcHash = 0;
-		
-    	// Generate the hash value for the pattern
+    	// Generate the hash value for the scope
     	for (int i = 0; i < scope.length(); i++) {
     		byte b = (byte)scope.charAt(i);
 
-    		// Our string is base 256, so each digit is 256^i where
-    		// 0 <= i <= n, where is the length the string.
-    	    int exponent = (i * 8) % 55;
-    	    srcHash += ((long)Math.pow(2.0, exponent))*(long)b;
+    	    srcHash += (long)b;
     		assert((long)b >= 0);
-    		//prevByte = b;
     	}
     	
     	System.out.println("scope=" + scope);
@@ -270,33 +260,8 @@ public class strMatch {
                 
     			assert(scope.length() == pattern.length());
     			
-    			// Divide by 256 and append the next byte for the updated
-    			// rolling hash function
-    			//srcHash >>>= 8;
-    			srcHash /= 256;//(long)prevByte;
-
-    		long asrcHash = 0;
-        	// Generate the hash value for the pattern
-        	for (int i = 0; i < scope.length()-1; i++) {
-        		byte ba = (byte)scope.charAt(i);
-
-        		// Our string is base 256, so each digit is 256^i where
-        		// 0 <= i <= n, where is the length the string.
-        	    int exponent = (i * 8) % 55;
-        	    asrcHash += ((long)Math.pow(2.0, exponent))*(long)ba;
-
-//        		asrcHash += fastExp(256, i, 997L)*(long)ba;
-        		assert((long)ba >= 0);
-        		//prevByte = b;
-        	}
-        	System.out.println("scope=" + scope);
-        	System.out.println("Expected srcHash=" + Long.toHexString(asrcHash) + " srcHash=" + Long.toHexString(srcHash));
-        	assert(asrcHash == srcHash);
-        	
-    		    //srcHash += fastExp(256, pattern.length()-1, 997L)*(long)b;
+        	    srcHash += (long)b;
         	    
-        	    int exponent = ((pattern.length() - 1) * 8) % 55;
-        	    srcHash += ((long)Math.pow(2.0, exponent))*(long)b;
     			assert((long)b >= 0);
     		} catch (EOFException fu) {
             	System.out.println("Last chance to find the pattern");
@@ -308,17 +273,178 @@ public class strMatch {
     	}
     	return patternFound;
     }
+
+    /**
+     * 
+     * @param pattern
+     * @return
+     */
+    protected static String[] getKMPSubStrings(String pattern) {
+    	String[] substrings = new String[pattern.length() + 1];
+    	// build array of strings that contain substrings
+    	for (int i = 0; i <= pattern.length(); i++) {
+    		substrings[i] = pattern.substring(0, i);
+    	}
+    	return substrings;
+    }
+
+    /**
+     * Given a string s, returns the longest core it can find
+     * @param s - string to search for a core within
+     * @return a substring of the search string s, of which is the longest pre/suffix
+     */
+    protected static String getCore(String s) {
+    	String core = "";
+    	if (s.length() < 2) return core;
+
+    	// only find core for strings of two characters or greater
+    	for (int i = 1; i < s.length(); i++) {
+    		String tempCore = s.substring(0, i);
+    		String tempS = s.substring(s.length() - i);
+    		if (tempCore.equals(tempS) && tempS.length() != s.length()) {
+    			core = tempCore;
+    		}
+    	}
+    	return core;
+    }
+    
+    /**
+     * Builds a table which contains a list of numbers which correspond to
+     * the length of the max core size of each substring of pattern
+     * @param pattern - the string to build the core table from
+     * @return an array of integers which indicate the length of each substring's core
+     */
+    protected static int[] buildCoreTable(String pattern) {
+    	String[] substrings = getKMPSubStrings(pattern);
+    	int[] table = new int[substrings.length];
+    	for (int i = 0; i < substrings.length; i++) {
+    		table[i] = getCore(substrings[i]).length();
+    	}
+    	return table;
+    }
     
     protected static boolean kmpMatch(String pattern, DataInputStream source)
     {
     	System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
-    	return false;
+    	int     chunkCount = pattern.length();
+    	int		bytesToGrab = 0;
+    	boolean patternFound = false;
+    	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
+    	int[]	c = buildCoreTable(pattern);
+    	
+    	// note that the left most will always be 0 in our version
+    	// t = scope
+    	// r = right index
+    	// l = left index (always 0 in our implementation)
+    	// p = pattern
+    	
+    	while (!patternFound) {
+	    	int r;
+	    	for (r = 0; r < chunkCount; r++) {
+	    		// Case 1: t[r] = p[r-l]
+	    		// nothing to do, because this loop will iterate r
+	    		
+	    		if (pattern.charAt(r) != scope.charAt(r)) {
+	    			// Case 2: t[r] != p[r-l] and r = l
+	    			if (r == 0) {
+	    				bytesToGrab = 1;
+	    			} else { // Case 3: t[r] != p[r-l] and r > l
+	    				bytesToGrab = r - c[r];
+	    			}
+	    			break; // early break out of the loop because no match
+	    		}
+	    	}
+	    	// if we made it through the loop and everything matches
+			if (r == chunkCount) {
+				patternFound = true;
+				System.out.println("PATTERN FOUND!!! YES!!!");
+			} else { // something didn't match, so get next scope
+				scope = scope.substring(bytesToGrab) + getNextChunkCountChars(bytesToGrab, source);
+				if (scope.length() != chunkCount) {
+					return false;
+				}
+			}
+    	}
+    	return patternFound;
     }
-
+    
+    /**
+     * Takes a pattern and maps all the chars to the right most index
+     * the char is found inside the pattern (indexing starts at 0)
+     * @param pattern - the string to find occurance mappings of
+     * @return a hashmap of all the available chars in the pattern and a mapping
+     * 			to their right most positions in the pattern
+     */
+    protected static HashMap occurancePatternMap(String pattern) {
+    	HashMap<Byte, Integer> result = new HashMap<Byte, Integer>();
+    	for (int i = 0; i < pattern.length(); i++) {
+    		result.put((byte) pattern.charAt(i), i);
+    	}
+    	return result;
+    }
+    
     protected static boolean bmooreMatch(String pattern, DataInputStream source)
     {
     	System.out.println(">>> Boyer-Moore Pattern Match <<<");
-    	return false;
+    	int     chunkCount = pattern.length();
+    	if (chunkCount <= 0) return true; 
+    	HashMap<Byte, Integer> occuranceMap = occurancePatternMap(pattern);
+    	int		bytesToGrab = 0;
+    	boolean patternFound = false;
+    	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
+    	
+    	// note that the left most will always be 0 in our version
+    	// t = scope
+    	// r = right index
+    	// l = left index (always 0 in our implementation)
+    	// p = pattern
+    	// Q1: Every occurrence of p in t that begins before index l 
+    	//     has been previously found.
+    	// Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
+    	
+    	while (!patternFound) {
+	    	int j;
+	    	for (j = chunkCount - 1; j >= 0; j--) {
+	    		// Case 1: j > 0 ^ p[j-1] = t[l+j-1]
+	    		// nothing to do, because this loop will iterate r
+	    		
+	    		if (pattern.charAt(j) != scope.charAt(j)) {
+	    			// Case 2: Q1 ^ Q2 ^ (j == 0 v p[j-1] != t[l+j-1])
+	    			if (j == 0) {
+	    				bytesToGrab = 1;
+	    			} else { // Q1^Q2^j>0^p[j-1]!=t[l+j-1]
+	    				int badSymbolHeuristic = 0;
+	    				int goodSuffixHeuristic = 0;
+	    				
+	    				// get bad symbol heuristic value
+	    				if (occuranceMap.containsKey((byte) scope.charAt(j))) {
+	    		    		badSymbolHeuristic = chunkCount - occuranceMap.get((byte) scope.charAt(j));
+	    		    	} else {
+	    		    		badSymbolHeuristic = j;
+	    		    	}
+	    				
+	    				// get good suffix heuristic value
+	    				
+	    				
+	    				bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
+	    			}
+	    			break; // early break out of the loop because no match
+	    		}
+	    	}
+	    	// if we made it through the loop and everything matches
+			if (j < 0) {
+				patternFound = true;
+				System.out.println("PATTERN FOUND!!! YES!!!");
+			} else { // something didn't match, so get next scope
+				scope = scope.substring(bytesToGrab) + getNextChunkCountChars(bytesToGrab, source);
+				if (scope.length() != chunkCount) {
+					return false;
+				}
+			}
+    	}
+    	return patternFound;
+    }
+
     }
     
 	/**
@@ -387,13 +513,13 @@ public class strMatch {
 			    
 			    // Now we have the pattern, so store it in the strPattern
 			    strPattern = strTmp.toString();
-			    
-			    System.out.println("***************************************");
-			    System.out.println("* Search for '" + strPattern + "'");
-			    System.out.println("***************************************");
-			    
+			    			    
 			    if (strPattern.length() > 0) { // do nothing if the string is empty
-				    // Brute Force String Matching algorithm
+				    System.out.println("***************************************");
+				    System.out.println("* Search for '" + strPattern + "'");
+				    System.out.println("***************************************");
+			    	
+			    	// Brute Force String Matching algorithm
 				    if (bruteForceMatch(strPattern, s))
 				    	System.out.println("BF MATCHED: " + strPattern);
 				    else
