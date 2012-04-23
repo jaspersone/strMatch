@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 
 public class strMatch {
-	static boolean TESTING = true;
+	static boolean TESTING = false;
 
     // begin McClure driving
 	/**
@@ -553,10 +553,13 @@ public class strMatch {
     	System.out.println(">>> Boyer-Moore Pattern Match <<<");
     	int     chunkCount = pattern.length();
     	if (chunkCount <= 0) return true; 
-    	HashMap<Byte, Integer> occuranceMap = occurancePatternMap(pattern);
+    	int[] rt = new int[256];
+    	for(int i = 0; i < rt.length; i++)
+    		rt[i] = -1; // initialize rt with all -1 values (flags)
+    	int[] b = buildCoreTable2(pattern.getBytes(), rt);
     	int		bytesToGrab = 0;
     	boolean patternFound = false;
-    	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
+    	String scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
     	
     	// note that the left most will always be 0 in our version
     	// t = scope
@@ -569,34 +572,36 @@ public class strMatch {
     	
     	while (!patternFound) {
 	    	int j;
-	    	for (j = chunkCount - 1; j >= 0; j--) {
+	    	for (j = chunkCount; j > 0; j--) {
 	    		// Case 1: j > 0 ^ p[j-1] = t[l+j-1]
 	    		// nothing to do, because this loop will iterate r
 	    		
-	    		if (pattern.charAt(j) != scope.charAt(j)) {
+	    		if (pattern.charAt(j-1) != scope.charAt(j-1)) {
 	    			// Case 2: Q1 ^ Q2 ^ (j == 0 v p[j-1] != t[l+j-1])
-	    			if (j == 0) {
-	    				bytesToGrab = 1;
-	    			} else { // Q1^Q2^j>0^p[j-1]!=t[l+j-1]
-	    				int badSymbolHeuristic = 0;
-	    				int goodSuffixHeuristic = 0;
-	    				
-	    				// get bad symbol heuristic value
-	    				if (occuranceMap.containsKey((byte) scope.charAt(j))) {
-	    		    		badSymbolHeuristic = chunkCount - occuranceMap.get((byte) scope.charAt(j));
-	    		    	} else {
-	    		    		badSymbolHeuristic = j;
-	    		    	}
-	    				
-	    				// get good suffix heuristic value	    				
-	    				
-	    				bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
-	    			}
+    				int badSymbolHeuristic = 0;
+    				int goodSuffixHeuristic = 0;
+    				
+    				// Since j is the rightmost index into the pattern,
+    				// it reflects the b(s) for the suffix starting at 
+    				// j.
+    				goodSuffixHeuristic = b[chunkCount-j];
+    				badSymbolHeuristic = j - 1 - rt[scope.charAt(j-1)];
+    				
+    				// get good suffix heuristic value	    				
+    				
+    				bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
+    				
+    				if (TESTING) {
+    					System.out.println("Scope: " + scope);
+    					System.out.println("badSH= " + badSymbolHeuristic + " goodSH= " + goodSuffixHeuristic);
+
+    					System.out.println("About to break");
+    				}
 	    			break; // early break out of the loop because no match
 	    		}
 	    	}
 	    	// if we made it through the loop and everything matches
-			if (j < 0) {
+			if (j <= 0) {
 				patternFound = true;
 				System.out.println("PATTERN FOUND!!! YES!!!");
 			} else { // something didn't match, so get next scope
