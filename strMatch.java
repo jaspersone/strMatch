@@ -90,7 +90,8 @@ public class strMatch {
 			}
 			// TODO Auto-generated catch block
     	} catch (EOFException fu) {
-        	System.out.println("Got to end of file without finding pattern");
+    		if (TESTING)
+    			System.out.println("Got to end of file without finding pattern");
         } catch (IOException e) {
         	e.printStackTrace();
         }
@@ -105,7 +106,9 @@ public class strMatch {
      */
     protected static boolean bruteForceMatch(String pattern, DataInputStream source)
     {
-    	System.out.println(">>> Brute Force Pattern Match <<<");
+    	if (TESTING) {
+    		System.out.println(">>> Brute Force Pattern Match <<<");
+    	}
     	int     chunkCount = pattern.length();
     	boolean patternFound = false;
     	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
@@ -121,7 +124,9 @@ public class strMatch {
     			i++;
     		}
 	    	if (i == chunkCount) {
-	    		System.out.println("PATTERN FOUND!!! YES!!!");
+	    		if (TESTING) {
+	    			System.out.println("PATTERN FOUND!!! YES!!!");
+	    		}
 				patternFound = true;
 			}
     		// try to shift the scope
@@ -148,7 +153,9 @@ public class strMatch {
 	    		assert(scope.length() == pattern.length());
     			
     		} catch (EOFException fu) {
-            	System.out.println("Last chance to find the pattern");
+    			if (TESTING) {
+    				System.out.println("Last chance to find the pattern");
+    			}
             	break;
             } catch (IOException e) {
             	e.printStackTrace();
@@ -183,8 +190,10 @@ public class strMatch {
     	int chunkCount = pattern.length();
     	boolean patternFound = false;
     	String scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-
-    	System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
+    	
+    	if (TESTING) {
+    		System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
+    	}
 
     	// Generate the hash value for the scope
     	for (int i = 0; i < scope.length(); i++) {
@@ -194,30 +203,15 @@ public class strMatch {
     		assert((long)b >= 0);
     	}
     	
-    	System.out.println("scope=" + scope);
-    	System.out.println("Expected srcHash=" + srcHash);
+    	if (TESTING) {
+	    	System.out.println("scope=" + scope);
+	    	System.out.println("Expected srcHash=" + srcHash);
+    	}
 
     	//prevByte = ;
     	
     	// go through the source and search for the pattern
     	while(!patternFound) {
-    		//System.out.println(scope);
-//    		srcHash = 0;
-//        	// Generate the hash value for the pattern
-//        	for (int i = 0; i < scope.length(); i++) {
-//        		byte b = (byte)scope.charAt(i);
-//
-//        		// Our string is base 256, so each digit is 256^i where
-//        		// 0 <= i <= n, where is the length the string.
-//        		srcHash <<= 8;
-//        		srcHash |= /*fastExp(256, i, 997L)**/(long)b;
-//        		assert((long)b >= 0);
-//        		//prevByte = b;
-//        	}
-        	
-    		if (pattern.equals(scope) && srcHash != patHash) {
-    			System.out.println("HASH srcHash=" + Long.toHexString(srcHash) + " patHash=" + Long.toHexString(patHash));
-    		}
     		// compare scope so far
     		if (srcHash == patHash) {
         		int i = 0;
@@ -230,7 +224,9 @@ public class strMatch {
         		}
 
     			if (i == chunkCount) {
-    	    		System.out.println("PATTERN FOUND!!! YES!!!");
+    				if (TESTING) {
+    					System.out.println("PATTERN FOUND!!! YES!!!");
+    				}
     				patternFound = true;
     			}
     		}
@@ -264,7 +260,9 @@ public class strMatch {
         	    
     			assert((long)b >= 0);
     		} catch (EOFException fu) {
-            	System.out.println("Last chance to find the pattern");
+    			if (TESTING) {
+    				System.out.println("Last chance to find the pattern");
+    			}
             	break;
             } catch (IOException e) {
             	e.printStackTrace();
@@ -474,7 +472,9 @@ public class strMatch {
     
     protected static boolean kmpMatch(String pattern, DataInputStream source)
     {
-    	System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
+    	if (TESTING) {
+    		System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
+    	}
     	int     chunkCount = pattern.length();
     	int		bytesToGrab = 0;
     	boolean patternFound = false;
@@ -506,7 +506,9 @@ public class strMatch {
 	    	// if we made it through the loop and everything matches
 			if (r == chunkCount) {
 				patternFound = true;
-				System.out.println("PATTERN FOUND!!! YES!!!");
+				if (TESTING) {
+					System.out.println("PATTERN FOUND!!! YES!!!");
+				}
 			} else { // something didn't match, so get next scope
 				scope = scope.substring(bytesToGrab) + getNextChunkCountChars(bytesToGrab, source);
 				if (scope.length() != chunkCount) {
@@ -550,7 +552,9 @@ public class strMatch {
     
     protected static boolean bmooreMatch(String pattern, DataInputStream source)
     {
-    	System.out.println(">>> Boyer-Moore Pattern Match <<<");
+    	if (TESTING) {
+    		System.out.println(">>> Boyer-Moore Pattern Match <<<");
+    	}
     	int     chunkCount = pattern.length();
     	if (chunkCount <= 0) return true; 
     	int[] rt = new int[256];
@@ -603,7 +607,9 @@ public class strMatch {
 	    	// if we made it through the loop and everything matches
 			if (j <= 0) {
 				patternFound = true;
-				System.out.println("PATTERN FOUND!!! YES!!!");
+				if (TESTING) {
+					System.out.println("PATTERN FOUND!!! YES!!!");
+				}
 			} else { // something didn't match, so get next scope
 				scope = scope.substring(bytesToGrab) + getNextChunkCountChars(bytesToGrab, source);
 				if (scope.length() != chunkCount) {
@@ -625,14 +631,14 @@ public class strMatch {
 		String outputFileName = args[2];
 		boolean patternEofFound = false;
 		boolean TESTING = false;
-    	int LIMIT = 2;
 		
 		// Get file set up
 		try {
 			FileInputStream pinput = new FileInputStream(patternFileName);
 			DataInputStream p = new DataInputStream(pinput);
 			FileInputStream sinput = new FileInputStream(sourceFileName);
-			DataInputStream s = new DataInputStream(sinput); 
+			DataInputStream s = new DataInputStream(sinput);
+			FileOutputStream outFile = new FileOutputStream(outputFileName);
 
 			// Outer loop over all patterns in the pattern file
 			while (!patternEofFound) {
@@ -682,18 +688,25 @@ public class strMatch {
 			    strPattern = strTmp.toString();
 			    			    
 			    if (strPattern.length() > 0) { // do nothing if the string is empty
-				    System.out.println("***************************************");
-				    System.out.println("* Search for '" + strPattern + "'");
-				    System.out.println("***************************************");
+				    if (TESTING) {
+				    	System.out.println("***************************************");
+					    System.out.println("* Search for '" + strPattern + "'");
+					    System.out.println("***************************************");
+				    }
 
 					sinput = new FileInputStream(sourceFileName);
 					s = new DataInputStream(sinput); 
-
-			    	// Brute Force String Matching algorithm
+					
+					// Setup output
+					String output = "";
+					
+					// Brute Force String Matching algorithm
 				    if (bruteForceMatch(strPattern, s))
-				    	System.out.println("BF MATCHED: " + strPattern);
+				    	output = "BF MATCHED: " + strPattern;
 				    else
-				    	System.out.println("BF FAILED: " + strPattern);
+				    	output = "BF FAILED: " + strPattern;
+				    System.out.println(output);
+				    outFile.write((output + "\n").getBytes());
 				    
 				    s.close();
 				    sinput.close();
@@ -703,9 +716,11 @@ public class strMatch {
 		
 				    // Rabin-Karp algorithm
 				    if (rabinKarpMatch(strPattern, s))
-				    	System.out.println("RK MATCHED: " + strPattern);
+				    	output = "RK MATCHED: " + strPattern;
 				    else
-				    	System.out.println("RK FAILED: " + strPattern);
+				    	output = "RK FAILED: " + strPattern;
+				    System.out.println(output);
+				    outFile.write((output + "\n").getBytes());
 				    
 				    s.close();
 				    sinput.close();
@@ -715,9 +730,11 @@ public class strMatch {
 				    
 				    // Knuth-Morris-Pratt algorithm
 				    if (kmpMatch(strPattern, s))
-				    	System.out.println("KMP MATCHED: " + strPattern);
+				    	output = "KMP MATCHED: " + strPattern;
 				    else
-				    	System.out.println("KMP FAILED: " + strPattern);
+				    	output = "KMP FAILED: " + strPattern;
+				    System.out.println(output);
+				    outFile.write((output + "\n").getBytes());
 				    
 				    s.close();
 				    sinput.close();
@@ -727,55 +744,21 @@ public class strMatch {
 				    
 				    // Boyer-Moore algorithm
 				    if (bmooreMatch(strPattern, s))
-				    	System.out.println("BM MATCHED: " + strPattern);
+				    	output = "BM MATCHED: " + strPattern;
 				    else
-				    	System.out.println("BM FAILED: " + strPattern);
+				    	output = "BM FAILED: " + strPattern;
+				    System.out.println(output);
+				    outFile.write((output + "\n").getBytes());
 				    
 				    s.close();
 				    sinput.close();
 			    }
 			} // LOOP to next pattern
-	
-//			FileOutputStream outf = new FileOutputStream(outputFileName);
-//			// Pull sets of LIMIT from f and encrypt them
-//			int[] tuple = new int[LIMIT];
-//			byte[] translatedTuple; // the tuple to write 
-//			int message = 0;
-//			int t = 0;
-//			while(!eofFound) {
-//				
-//				
-//				
-//				for (int i = 0; i < LIMIT; i++) {
-//					try {
-//						t = f.readUnsignedByte();
-//					} catch (EOFException fu) {
-//						eofFound = true;
-//					}
-//					if (!eofFound) {
-//						tuple[i] =  t; // loads LIMIT # of elements into tuple
-//					} else { // if EOF is found
-//						while(i < LIMIT) { // fill rest of tuple with zeros
-//							tuple[i] = 0;
-//							i++;
-//						}
-//						f.close();
-//						finput.close();
-//						break;
-//					}
-//				}
-//			}
-//			if (eofFound) {
-//				if (TESTING) {
-//					System.out.println("Found EOF.");
-//				}
-//				outf.close();
-//			} else {
-//				if (TESTING) {
-//					System.out.println("You have problems if you made it into this section without closing the file.");
-//				}
-//				assert(false);
-//			}
+			
+			// close output file
+			outFile.flush();
+		    outFile.close();
+		    
 		} catch (FileNotFoundException ex) {
 			// TODO Auto-generated catch block
 			System.out.println("There was an error opening the file " + ex);

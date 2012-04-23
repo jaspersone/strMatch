@@ -273,39 +273,6 @@ public class strMatchTest {
 			assertEquals(testResult[i], expectedResult[i]);
 		}
 	}
-	
-	
-	/**
-	 * Test method for bruteForceMatch(String, DataInputStream)
-	 */
-	@Test
-	public void testBruteForceMatch() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for rabinKarpMatch(String, DataInputStream)
-	 */
-	@Test
-	public void testRabinKarpMatch() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for kmpMatch(String, DataInputStream)
-	 */
-	@Test
-	public void testKmpMatch() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for bmooreMatch(String, DataInputStream)
-	 */
-	@Test
-	public void testBmooreMatch() {
-		fail("Not yet implemented");
-	}
 
 	/**
 	 * Test method for main(java.lang.String[])
