@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 
 public class strMatch {
-	static boolean TESTING = false;
+	static boolean TESTING = true;
 
     // begin McClure driving
 	/**
@@ -289,15 +289,12 @@ public class strMatch {
     }
 
     /**
-     * Given a string s, returns the longest core it can find
+     * Given a string s, returns the longest core it can find (This is just for testing)
      * @param s - string to search for a core within
      * @return a substring of the search string s, of which is the longest pre/suffix
      */
-    protected static String getCore(String s) {
+    protected static String getCoreTest(String s, String[] substrings) {
     	String core = "";
-    	if (s.length() < 2) return core;
-
-    	// only find core for strings of two characters or greater
     	for (int i = 1; i < s.length(); i++) {
     		String tempCore = s.substring(0, i);
     		String tempS = s.substring(s.length() - i);
@@ -318,10 +315,162 @@ public class strMatch {
     	String[] substrings = getKMPSubStrings(pattern);
     	int[] table = new int[substrings.length];
     	for (int i = 0; i < substrings.length; i++) {
-    		table[i] = getCore(substrings[i]).length();
+    		table[i] = getCoreTest(substrings[i], substrings).length();
     	}
     	return table;
     }
+
+    /**
+     * Iterative core building functionality that is O(3m) time,
+     * where m is the length of the pattern.
+     *
+     * Portions modeled after Boyer-Moore algorithm described on 
+     * p209 of "Theory in Programmig Practice", Misra
+     * 
+     * @param p Byte array containing our pattern.
+     * @param rt Integer array of an offset from the left of the pattern.
+     *           Size of the array is assumed to be 256 entries, and is 
+     *           initialized by the caller to all entries equal -1.
+     * @return An array representing b(s), the precomputed jump table
+     *         for the good suffix heurisitic.
+     */
+    protected static int[] buildCoreTable2(byte[] p, int[] rt) {
+        // The pattern length is the size of the table, since each core
+        // calculation involves the next symbol in p[i+direction]
+    	assert(rt.length == 256);
+        int[] table = new int[p.length+1];
+        int[] b = new int[p.length+1];
+        int   i = p.length-1;
+        int   m = 0;
+        int   vLength = 1;
+        int   coreLength = 0;
+
+        // Start with the first value
+        while (m < p.length) {
+            // If length of v is enough to generate a proper
+            // prefix and suffix, determine if we have a core.
+            if (vLength > 1) {
+                //
+                // Match ..xa 
+                // if x==a then core is coreLength+1.
+                // else coreLength = 0, since we cannot match
+                //                      a proper prefix and suffix
+                //
+            	// This is explicitly for suffix, since index is 
+            	// p.length-1-coreLength.  For prefix, you would need
+            	// vLength - coreLength..
+                if (p[i] == p[p.length - 1 - coreLength]) {
+                    table[vLength] = ++coreLength;
+                } else {
+                    coreLength = 0;
+                }
+            }
+            
+            if (TESTING) {
+            	String myDumbString = new String("");
+            	for (int k = 0; k < vLength; k++)
+            		myDumbString += (char)p[i + k];
+            	System.out.println("Substring=" + myDumbString + " coreLength=" + coreLength);
+            }
+            // 
+            // Bad Symbol Heuristic
+            //
+            // Map the offset of this byte to the rightmost offset
+            // in the pattern.
+            //
+            rt[p[i]] = Math.max(rt[p[i]], i);
+
+            // Length of the substring of p
+            vLength++;
+            i--;
+            m++;
+        }
+ 
+        // 
+        // Good Suffix Heuristic
+        //
+        // Default elements of b to m-|c(p)|
+        //
+        for (int j = 0; j < m+1; j++) {
+            b[j] = m - table[m];
+        }
+
+        if (TESTING) {
+	        System.out.println("Core Table=" + Arrays.toString(table));
+	        System.out.println("b=" + Arrays.toString(b));
+        }
+        //
+        // Third pass modeled after algorithm described on pg 209
+        // of "Theory in Programming Practice", Misra
+        // 
+        // i := |c(v)|
+        // if b[j-i] > j-i then b[j-i] := j-i.
+        //
+        // A single character comparison will always have a core
+        // value of epsilon, therefore b[0]=|v|-|epsilon|= 1
+        for (int j = 1; j < m+1; j++) {
+            i = table[j];
+            b[i] = Math.min(b[i], j-i);
+        }
+        if (TESTING) {
+        	System.out.println("bFinal=" + Arrays.toString(b));
+        }
+        return b;
+    }
+
+    /**
+     * Iterative core building functionality that is O(3m) time,
+     * where m is the length of the pattern.
+     *
+     * Portions modeled after Boyer-Moore algorithm described on 
+     * p209 of "Theory in Programmig Practice", Misra
+     * 
+     * @param p Byte array containing our pattern.
+     * @return An array representing core table lengths
+     */
+    protected static int[] buildCoreTable3(byte[] p) {
+        // The pattern length is the size of the table, since each core
+        // calculation involves the next symbol in p[i+direction]
+
+        int[] table = new int[p.length+1];
+        int   i = 0;
+        int   coreLength = 0;
+
+        table[0] = 0; // epsilon length value = 0
+        // Start with the first value
+        while (i < p.length) {
+            // If length of v is enough to generate a proper
+            // prefix and suffix, determine if we have a core.
+            if (i > 1) {
+                //
+                // Match ..xa 
+                // if x==a then core is coreLength+1.
+                // else coreLength = 0, since we cannot match
+                //                      a proper prefix and suffix
+                //
+            	// This is explicitly for suffix, since index is 
+            	// p.length-1-coreLength.  For prefix, you would need
+            	// vLength - coreLength..
+                if (p[coreLength] == p[i]) {
+                    table[i+1] = ++coreLength;
+                } else {
+                    coreLength = 0;
+                }
+            } else {
+                table[i] = 0; // default length of core for sizes <= 1
+            }        
+            if (TESTING) {
+                String myDumbString = new String("");
+                for (int k = 0; k <= i; k++)
+                	myDumbString += (char)p[k];
+            	System.out.println("Substring=" + myDumbString + " coreLength=" + coreLength);
+            }
+            i++;
+        }
+
+        return table;
+    }
+    
     
     protected static boolean kmpMatch(String pattern, DataInputStream source)
     {
@@ -330,7 +479,7 @@ public class strMatch {
     	int		bytesToGrab = 0;
     	boolean patternFound = false;
     	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-    	int[]	c = buildCoreTable(pattern);
+    	int[]	c = buildCoreTable3(pattern.getBytes());
     	
     	// note that the left most will always be 0 in our version
     	// t = scope

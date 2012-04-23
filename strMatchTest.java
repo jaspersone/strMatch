@@ -121,7 +121,8 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_emptyString() {
 		String substring = "";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "";
 		assertEquals(testResult, expectedResult);
 	}
@@ -132,7 +133,8 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_singleCharString() {
 		String substring = "a";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "";
 		assertEquals(testResult, expectedResult);
 	}
@@ -143,7 +145,8 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_basic1() {
 		String substring = "ab";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "";
 		assertEquals(testResult, expectedResult);
 	}
@@ -154,7 +157,8 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_basic2() {
 		String substring = "aba";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "a";
 		assertEquals(testResult, expectedResult);
 	}
@@ -165,7 +169,8 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_basic3() {
 		String substring = "abab";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "ab";
 		assertEquals(testResult, expectedResult);
 	}
@@ -176,7 +181,8 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_basic4() {
 		String substring = "ababa";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "aba";
 		assertEquals(testResult, expectedResult);
 	}
@@ -187,11 +193,45 @@ public class strMatchTest {
 	@Test
 	public void testGetCore_basic5() {
 		String substring = "ababac";
-		String testResult = strMatch.getCore(substring);
+		String[] substrings = strMatch.getKMPSubStrings("ababac");
+		String testResult = strMatch.getCoreTest(substring, substrings);
 		String expectedResult = "";
 		assertEquals(testResult, expectedResult);
 	}
 
+	/**
+	 * Test method for buildCoreTable2(String)
+	 */
+	@Test
+	public void testBuildCoreTable2_basicPattern2() {
+		String pattern = new String("xabcabxab");
+		int[] rt = new int[256];
+		for (int i = 0; i < 256; i++)
+			rt[i] = -1;
+		
+		int[] testResult = strMatch.buildCoreTable2(pattern.getBytes(), rt);
+		int[] expectedResult = {1, 3, 3, 6, 6, 6, 6, 6, 6, 6};
+		assertEquals(testResult.length, expectedResult.length);
+		for (int i = 0; i < expectedResult.length; i++) {
+			assertEquals(expectedResult[i], testResult[i]);
+		}
+	}
+
+	/**
+	 * Test method for buildCoreTable2(String)
+	 */
+	@Test
+	public void testBuildCoreTable3_basicPattern1() {
+		String pattern = new String("xabcabxab");
+		int[] testResult = strMatch.buildCoreTable3(pattern.getBytes());
+		int[] expectedResult = {0, 0, 0, 0, 0, 0, 0, 1, 2, 3};
+		assertEquals(testResult.length, expectedResult.length);
+		for (int i = 0; i < expectedResult.length; i++) {
+			assertEquals(expectedResult[i], testResult[i]);
+		}
+	}
+	
+	
 	/**
 	 * Test method for buildCoreTable(String)
 	 */
@@ -233,7 +273,7 @@ public class strMatchTest {
 			assertEquals(testResult[i], expectedResult[i]);
 		}
 	}
-
+	
 	
 	/**
 	 * Test method for bruteForceMatch(String, DataInputStream)
