@@ -620,15 +620,7 @@ public class strMatch {
     	return patternFound;
     }
     
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
-    	String patternFileName = args[0];
-		String sourceFileName = args[1];
-		String outputFileName = args[2];
+    protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName) {
 		boolean patternEofFound = false;
 		boolean TESTING = false;
 		
@@ -768,6 +760,17 @@ public class strMatch {
 			System.out.println("IO Exception occurred while accessing f.");
 			r.printStackTrace();
 		}
+
+    }
+    
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+    	String patternFileName = args[0];
+		String sourceFileName = args[1];
+		String outputFileName = args[2];
+		runExperiments(patternFileName, sourceFileName, outputFileName);
 	}
 
 }

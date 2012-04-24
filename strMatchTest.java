@@ -1,5 +1,9 @@
 import static org.junit.Assert.*;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import org.junit.Test;
 
 /**
@@ -278,7 +282,34 @@ public class strMatchTest {
 	 * Test method for main(java.lang.String[])
 	 */
 	@Test
-	public void testMain() {
+	public void testRunExperiments() {
+		String pattern = "pattern.txt";
+		String source = "02_exodus.txt";
+		String outputFileName = "test_output.txt";
+		String expectedFileName = "expected_output.txt";
+		strMatch.runExperiments(pattern, source, outputFileName);
+		
+		try {
+			FileInputStream outputFile = new FileInputStream(outputFileName);
+			FileInputStream expectedFile = new FileInputStream(expectedFileName);
+			
+			int testResult = outputFile.read();
+			int expectedResult = expectedFile.read();
+			while (testResult != -1 && expectedResult != -1) {
+				assertEquals(expectedResult, testResult);
+				testResult = outputFile.read();
+				expectedResult = expectedFile.read();
+			}
+		} catch (FileNotFoundException ex) {
+			// TODO Auto-generated catch block
+			System.out.println("There was an error opening the file " + ex);
+			ex.printStackTrace();
+		} catch (IOException r) {
+			// TODO Auto-generated catch block
+			System.out.println("IO Exception occurred while accessing f.");
+			r.printStackTrace();
+		}
+		
 		assertTrue(true);
 	}
 
