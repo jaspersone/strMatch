@@ -10,6 +10,7 @@ import java.util.HashMap;
 
 public class strMatch {
 	static boolean TESTING = false;
+	static byte prevByte = 0x00;	
 
     // begin McClure driving
 	/**
@@ -67,25 +68,24 @@ public class strMatch {
     {
     	assert(chunkCount > 0);
     	String	scope		= "";
-    	byte 	prevByte 	= 0x00;
+
     	try {
-			for (int i = 0; i < chunkCount; i++) {
+		for (int i = 0; i < chunkCount; i++) {
 				byte currentByte = source.readByte();
 				byte byteToAdd = currentByte; // assume you want to add current byte
-				
 	    		// Windows uses two characters to represent a text 
 	    		// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-	    		// itself, so convert 0x0A to 0x0D, and absorb
+	    		// itself, so convert 0x0D to 0x0A, and absorb
 	    		// trailing 0x0A if this is a windows newline encoding
 	    		//
-	    		if ((currentByte == 0x0A) && (prevByte == 0x0D)) {
-	    			// Ignore
-	    			byteToAdd = source.readByte();
-	    		} else if ((currentByte == 0x0A) && (prevByte != 0x0D)) {
-	    			// Convert all independent 0x0A to 0x0D
-	    			byteToAdd = 0x0D;
-	    		}
-				scope += (char)byteToAdd;
+                if (currentByte == 0x0D) 
+                    scope += (char)0x0A;
+                else if ((prevByte == 0x0D) && (currentByte == 0x0A))
+			// Absorb this iteration...
+			i--;
+		else
+                    scope += (char)currentByte;
+
 				prevByte = currentByte;
 			}
 			// TODO Auto-generated catch block
@@ -95,6 +95,7 @@ public class strMatch {
         } catch (IOException e) {
         	e.printStackTrace();
         }
+        
     	return scope;
     }
     
@@ -112,7 +113,9 @@ public class strMatch {
     	int     chunkCount = pattern.length();
     	boolean patternFound = false;
     	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-        byte 	prevByte = 0x00;
+        
+	// Reset our prevByte for our stream parser.
+	prevByte = 0x00;
 
     	// go through the source and search for the pattern
     	while(!patternFound) {
@@ -136,17 +139,14 @@ public class strMatch {
 
 	    		// Windows uses two characters to represent a text 
 	    		// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-	    		// itself, so convert 0x0A to 0x0D, and absorb
+	    		// itself, so convert 0x0D to 0x0A, and absorb
 	    		// trailing 0x0A if this is a windows newline encoding
 	    		//
-	    		if ((b == 0x0A) && (prevByte == 0x0D)) {
-	    			// Ignore
-	    			b = source.readByte();
-	    		} else if ((b == 0x0A) && (prevByte != 0x0D)) {
-	    			// Convert all independent 0x0A to 0x0D
-	    			b = 0x0D;
-	    		}
-	    		
+			if (b == 0x0D) 
+ 				scope += scope.substring(1) + (char)0x0A;
+			else if (!((prevByte == 0x0D) && (b == 0x0A)))
+ 				scope = scope.substring(1) + (char)b;
+    		
 	    		scope = scope.substring(1) + (char)b;
 	    		prevByte = readByte;
 
@@ -179,7 +179,9 @@ public class strMatch {
     {
     	long srcHash = 0;
     	long patHash = 0;
-    	byte prevByte = 0x00;
+    	
+	// Reset prevByte for our stream parser.
+	prevByte = 0x00;
     	
     	// Generate the hash value for the pattern
     	for (int i = 0; i < pattern.length(); i++) {
@@ -241,25 +243,19 @@ public class strMatch {
 	    		// itself, so convert 0x0A to 0x0D, and absorb
 	    		// trailing 0x0A if this is a windows newline encoding
 	    		//
-	    		if ((b == 0x0A) && (prevByte == 0x0D)) {
-	    			// Ignore
-	    			b = source.readByte();
-	    		} else if ((b == 0x0A) && (prevByte != 0x0D)) {
-	    			// Convert all independent 0x0A to 0x0D
-	    			b = 0x0D;
-	    		}
-
-	    		srcHash -= (long)scope.charAt(0);
-	    		
-	    		scope = scope.substring(1) + (char)b;
-    			prevByte = readByte;
-                
-    			assert(scope.length() == pattern.length());
-    			
-        	    srcHash += (long)b;
-        	    
-    			assert((long)b >= 0);
-    		} catch (EOFException fu) {
+ 			if (b == 0x0D) {
+		    		srcHash -= (long)scope.charAt(0);
+		    		scope = scope.substring(1) + (char)0x0A;
+    				prevByte = readByte;
+    				assert(scope.length() == pattern.length());
+        			srcHash += (long)0x0A;
+			} else if (!((prevByte == 0x0D) && (b == 0x0A))) {
+ 		    		srcHash -= (long)scope.charAt(0);
+	   			scope = scope.substring(1) + (char)b;
+    				prevByte = readByte;
+    				assert(scope.length() == pattern.length());
+    	                }        
+		} catch (EOFException fu) {
     			if (TESTING) {
     				System.out.println("Last chance to find the pattern");
     			}
@@ -469,7 +465,14 @@ public class strMatch {
         return table;
     }
     
-    
+    /**
+     * Implements the Knuth-Morris-Pratt algorithm as described
+     * in CS337, Eberlein and "Theory in Programming Practice", Misra.
+     *
+     * @param pattern Input pattern to search for.
+     * @param source Source text that we will traverse for a pattern match.
+     * @return TRUE if pattern found, FALSE if pattern not found.
+     */ 
     protected static boolean kmpMatch(String pattern, DataInputStream source)
     {
     	if (TESTING) {
@@ -480,7 +483,10 @@ public class strMatch {
     	boolean patternFound = false;
     	String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
     	int[]	c = buildCoreTable3(pattern.getBytes());
-    	
+    
+        // Reset prevByte for our stream parser.
+	prevByte = 0x00;
+	
     	// note that the left most will always be 0 in our version
     	// t = scope
     	// r = right index
@@ -549,7 +555,16 @@ public class strMatch {
     	
     	return b;
     }
-    
+   
+    /**
+     * Implementation of Boyer-Moore pattern matching algorithm
+     * as described in CS337, Eberlein and 
+     * "Theory in Programming Practice", Misra.
+     *
+     * @param pattern Input pattern to search for.
+     * @param source Source text that we will traverse for a pattern match.
+     * @return TRUE if pattern found, FALSE if pattern not found.
+     */ 
     protected static boolean bmooreMatch(String pattern, DataInputStream source)
     {
     	if (TESTING) {
@@ -564,7 +579,10 @@ public class strMatch {
     	int		bytesToGrab = 0;
     	boolean patternFound = false;
     	String scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-    	
+    
+	// Reset our prevByte for our stream parser.
+	prevByte = 0x00;
+	
     	// note that the left most will always be 0 in our version
     	// t = scope
     	// r = right index
@@ -639,6 +657,9 @@ public class strMatch {
 				String  strPattern = new String("");
 				StringBuilder strTmp = new StringBuilder("");
 
+				// Reset our prevByte for our stream parser
+				prevByte = 0x00;
+
 				// Read in the pattern from the pattern file.  Per the 
 				// assignment documentation, the pattern is surrounded by
 				// '&'
@@ -646,31 +667,23 @@ public class strMatch {
 			        try {
 			    		byte b = p.readByte();
 			    		
+					if (b == '&') {
+			    			patternAmpCount++;
+			    		} else if (patternAmpCount > 0) {
 			    		// Windows uses two characters to represent a text 
 			    		// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
 			    		// itself, so convert 0x0D to 0x0A, and absorb
 			    		// trailing 0x0A if this is a windows newline encoding
 			    		//
-			    		while (b == 0x0D) {
-			    			// If we are recording the pattern, replace
-			    			// 0x0D with 0x0A
-			    			if (patternAmpCount > 0)
-				    			strTmp.append((char)0x0A);
 
-			    			b = p.readByte();
+			    		if (b == 0x0D) 
+						strTmp.append((char)0x0A);
+					else if (!((prevByte == 0x0D) && (b == 0x0A)))
+						strTmp.append((char)b);
+			    		}
 
-			    			// If this is a windows newline encoding, our 
-			    			// next byte will be 0x0A.  Ignore the trailing
-			    			// 0x0A and read to the next byte in the stream 
-			    			if (b == 0x0A)
-			    				b = p.readByte();
-			    		}
-			    		
-			    		if (b == '&') {
-			    			patternAmpCount++;
-			    		} else if (patternAmpCount > 0) {
-			    			strTmp.append((char)b);
-			    		}
+					prevByte = b;
+ 
 			        } catch (EOFException fu) {
 			        	patternEofFound = true;
 			        }
