@@ -1,5 +1,7 @@
 import static org.junit.Assert.*;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -15,59 +17,6 @@ import org.junit.Test;
  *
  */
 public class strMatchTest {
-
-	/**
-	 * Test method for fastExp(long, long, long)
-	 */
-	@Test
-	public void testFastExp1() {
-		long base = 4;
-		long expo = 35;
-		long mod = 11;
-		long testResult = strMatch.fastExp(base, expo, mod);
-		long expectedResult = 1;
-		assertEquals(testResult, expectedResult);
-	}
-
-	/**
-	 * Test method for fastExp(long, long, long)
-	 */
-	@Test
-	public void testFastExp2() {
-		long base = 12348;
-		long expo = 7829;
-		long mod = 347;
-		long testResult = strMatch.fastExp(base, expo, mod);
-		long expectedResult = 198;
-		assertEquals(testResult, expectedResult);
-	}
-
-	/**
-	 * Test method for fastExp(long, long, long)
-	 */
-	@Test
-	public void testFastExp3() {
-		long base = 56;
-		long expo = 7;
-		long mod = 33;
-		long testResult = strMatch.fastExp(base, expo, mod);
-		long expectedResult = 23;
-		assertEquals(testResult, expectedResult);
-	}
-
-	/**
-	 * Test method for fastExp(long, long, long)
-	 */
-	@Test
-	public void testFastExp4() {
-		long base = 0;
-		long expo = 0;
-		long mod = 1;
-		long testResult = strMatch.fastExp(base, expo, mod);
-		long expectedResult = 0;
-		assertEquals(testResult, expectedResult);
-	}
-
 	/**
 	 * Test method for getKMPSubStrings(String)
 	 */
@@ -282,7 +231,7 @@ public class strMatchTest {
 	 * Test method for main(java.lang.String[])
 	 */
 	@Test
-	public void testRunExperiments() {
+	public void testRunExperiments_simple_newline() {
 		String pattern = "pattern.txt";
 		String source = "02_exodus.txt";
 		String outputFileName = "test_output.txt";
@@ -313,4 +262,201 @@ public class strMatchTest {
 		assertTrue(true);
 	}
 
+	/**
+	 * Test method for main(java.lang.String[])
+	 */
+	@Test
+	public void testRunExperiments_funky_newlines() {
+		String pattern = "pattern.txt";
+		String source = "01_genesis.txt";
+		String outputFileName = "test_output_genesis.txt";
+		String expectedFileName = "expected_output_genesis.txt";
+		strMatch.runExperiments(pattern, source, outputFileName);
+		
+		try {
+			FileInputStream outputFile = new FileInputStream(outputFileName);
+			FileInputStream expectedFile = new FileInputStream(expectedFileName);
+			
+			int testResult = outputFile.read();
+			int expectedResult = expectedFile.read();
+			while (testResult != -1 && expectedResult != -1) {
+				assertEquals(expectedResult, testResult);
+				testResult = outputFile.read();
+				expectedResult = expectedFile.read();
+			}
+		} catch (FileNotFoundException ex) {
+			// TODO Auto-generated catch block
+			System.out.println("There was an error opening the file " + ex);
+			ex.printStackTrace();
+		} catch (IOException r) {
+			// TODO Auto-generated catch block
+			System.out.println("IO Exception occurred while accessing f.");
+			r.printStackTrace();
+		}
+		
+		assertTrue(true);
+	}
+	
+	/**
+	 * Testing Timing: Brute Force bruteForceMatch(String pattern, DataInputStream source)
+	 */
+	@Test
+	public void testBruteForceMatch_largePatternNoMatch() {
+		Stopwatch s = new Stopwatch();
+		String pattern = "12345678";
+		StringBuilder source = new StringBuilder("");
+		boolean found = false;
+		int testCount = 100;
+		int sourceSize = 1048576;
+		for (int i = 0; i < sourceSize; i++)
+			source.append("a");
+		
+		byte[] sourceArr = source.toString().getBytes();
+		
+		s.start();
+		try {
+			for (int i = 0; i < testCount; i++) {
+//				System.out.println("brute force test: " + i);
+				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
+				DataInputStream sourceStream = new DataInputStream(bstream);
+				found = strMatch.bruteForceMatch(pattern, sourceStream);
+				sourceStream.close();
+				assertEquals(false, found);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		s.stop();
+		System.out.println("Average time for Brute Force 1: " + (s.time() / testCount));
+	}
+	
+	/**
+	 * Testing Timing: Rabin Karp rabinKarpMatch(String pattern, DataInputStream source)
+	 */
+	@Test
+	public void testRabinKarpMatch_largePatternNoMatch() {
+		Stopwatch s = new Stopwatch();
+		String pattern = "12345678";
+		StringBuilder source = new StringBuilder("");
+		boolean found = false;
+		int testCount = 100;
+		int sourceSize = 1048576;
+		for (int i = 0; i < sourceSize; i++)
+			source.append("a");
+		
+		byte[] sourceArr = source.toString().getBytes();
+		
+		s.start();
+		try {
+			for (int i = 0; i < testCount; i++) {
+//				System.out.println("brute force test: " + i);
+				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
+				DataInputStream sourceStream = new DataInputStream(bstream);
+				found = strMatch.rabinKarpMatch(pattern, sourceStream);
+				sourceStream.close();
+				assertEquals(false, found);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		s.stop();
+		System.out.println("Average time for Rabin-Karp 1: " + (s.time() / testCount));
+	}
+	
+	/**
+	 * Testing Timing: KMP Match kmpMatch(String pattern, DataInputStream source)
+	 */
+	@Test
+	public void testKmpMatch_largePatternNoMatch() {
+		Stopwatch s = new Stopwatch();
+		String pattern = "12345678";
+		StringBuilder source = new StringBuilder("");
+		boolean found = false;
+		int testCount = 100;
+		int sourceSize = 1048576;
+		for (int i = 0; i < sourceSize; i++)
+			source.append("a");
+		
+		byte[] sourceArr = source.toString().getBytes();
+		
+		s.start();
+		try {
+			for (int i = 0; i < testCount; i++) {
+//				System.out.println("brute force test: " + i);
+				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
+				DataInputStream sourceStream = new DataInputStream(bstream);
+				found = strMatch.kmpMatch(pattern, sourceStream);
+				sourceStream.close();
+				assertEquals(false, found);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		s.stop();
+		System.out.println("Average time for KMP Match 1: " + (s.time() / testCount));
+	}
+	
+	/**
+	 * Testing Timing: Boyer-Moore bmooreMatch(String pattern, DataInputStream source)
+	 */
+	@Test
+	public void testBoyerMoore_largePatternNoMatch() {
+		Stopwatch s = new Stopwatch();
+		String pattern = "12345678";
+		StringBuilder source = new StringBuilder("");
+		boolean found = false;
+		int testCount = 100;
+		int sourceSize = 1048576;
+		for (int i = 0; i < sourceSize; i++)
+			source.append("a");
+		
+		byte[] sourceArr = source.toString().getBytes();
+		
+		s.start();
+		try {
+			for (int i = 0; i < testCount; i++) {
+//				System.out.println("brute force test: " + i);
+				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
+				DataInputStream sourceStream = new DataInputStream(bstream);
+				found = strMatch.bmooreMatch(pattern, sourceStream);
+				sourceStream.close();
+				assertEquals(false, found);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		s.stop();
+		System.out.println("Average time for Boyer-Moore Match 1: " + (s.time() / testCount));
+	}
+	
+	public void testMatchGeneral(String pattern, int testCount, int sourceSize, String sourceChars) {
+		Stopwatch s = new Stopwatch();
+		StringBuilder source = new StringBuilder("");
+		boolean found = false;
+		for (int i = 0; i < sourceSize; i++)
+			source.append(sourceChars);
+		
+		byte[] sourceArr = source.toString().getBytes();
+		
+		s.start();
+		try {
+			for (int i = 0; i < testCount; i++) {
+//				System.out.println("brute force test: " + i);
+				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
+				DataInputStream sourceStream = new DataInputStream(bstream);
+				found = strMatch.bmooreMatch(pattern, sourceStream);
+				sourceStream.close();
+				assertEquals(false, found);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		s.stop();
+		System.out.println("Average time for Boyer-Moore Match 1: " + (s.time() / testCount));
+	}
 }
