@@ -13,6 +13,49 @@ public class strMatch {
 	// the previous chunk, for the 0x0D,0x0A Windows newline pattern.
 	static byte prevByte = 0x00;	
 
+	// begin McClure driving
+	/**
+     * Helper function for fast exponentiation
+     * 
+     * a^b (mod n)
+     * 
+     * Arguments:
+     * a - Base of the number, MUST BE NONNEGATIVE
+     * b - Exponent of the number, MUST BE NONNEGATIVE
+     * n - Modulus for the exponentiation
+     *
+     * Returns:
+     * Result of the calculation a^b (mod n)
+     */
+    static long fastExp(long a, long b, long n)
+    {
+        long c = 1, k = 0;
+
+        // Return a bad value if we have bad inputs
+        if ((a < 0) || (b < 0))
+            return -1;
+
+        // Find the topmost bit location
+        while ((1 << k+1) <= b)
+            k++;
+
+        // Fast exponentiation, without branching
+        while (k >= 0)
+        {
+            // This is equivalent to:
+            //
+            // if ((b & (1 << k)) > 0)
+            //    c = (((c*c) % n) * a) % n;
+            // else
+            //    c = ((c*c) % n);
+            c = (((c*c) % n) + (((c*c) % n) * ((a-1) * (b & (1 << k)) >> k)) % n) % n;
+            k--;
+        }
+
+        return c;
+    }
+    // end McClure driving
+	
 	/**
 	 * Grabs the first chunk of chars from the source file to kick off several types
 	 * of string matching algorithms
@@ -26,11 +69,9 @@ public class strMatch {
 	{
 		assert(chunkCount > 0);
 		String	scope		= "";
-
 		try {
 			for (int i = 0; i < chunkCount; i++) {
 				byte currentByte = source.readByte();
-				byte byteToAdd = currentByte; // assume you want to add current byte
 				// Windows uses two characters to represent a text 
 				// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
 				// itself, so convert 0x0D to 0x0A, and absorb
@@ -54,8 +95,37 @@ public class strMatch {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 		return scope;
+	}
+	
+	protected static String getNextChunkCountBytes(int chunkCount, byte[] source, int leftPoint)
+	{
+		assert(chunkCount > 0);
+		assert(leftPoint >= 0 && leftPoint < source.length);
+		
+		StringBuilder scope = new StringBuilder();
+		// assigns endPoint to leftPoint + chunkCount, unless it goes beyond the size
+		// of the source array
+		int endPoint = ((leftPoint + chunkCount) < source.length) ?
+						(leftPoint + chunkCount) : source.length;
+		for (int i = leftPoint; i < endPoint; i++) {
+			byte currentByte = source[i];
+			// Windows uses two characters to represent a text 
+			// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+			// itself, so convert 0x0D to 0x0A, and absorb
+			// trailing 0x0A if this is a windows newline encoding
+			//
+			if (currentByte == 0x0D) {
+				scope.append((char) 0x0A);
+			} else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
+				// Absorb this iteration...
+				i--;
+			} else {
+				scope.append((char) currentByte);
+			}
+			prevByte = currentByte;
+		}
+		return scope.toString();
 	}
 
 	/**
@@ -124,6 +194,46 @@ public class strMatch {
 	}
 
 	/**
+	 * 
+	 * @param pattern
+	 * @param source
+	 * @return
+	 */
+	protected static boolean bruteForceMatch(String pattern, byte[] source)
+	{
+		if (TESTING) {
+			System.out.println(">>> Brute Force Pattern Match <<<");
+		}
+		int     chunkCount 		= pattern.length();
+		int		nextCharIndex 	= chunkCount;
+		boolean patternFound 	= false;
+		String  scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
+
+		// Reset our prevByte for our stream parser.
+		prevByte = 0x00;
+
+		// go through the source and search for the pattern
+		while(!patternFound && nextCharIndex < source.length) {
+			// compare scope so far
+			int i = 0;
+			while (i < chunkCount) {
+				if (pattern.charAt(i) != scope.charAt(i))
+					break;
+				i++;
+			}
+			if (i == chunkCount) {
+				if (TESTING) {
+					System.out.println("PATTERN FOUND!!! YES!!!");
+				}
+				patternFound = true;
+			} else { // get the next char
+				scope = scope.substring(1) + getNextChunkCountBytes(1, source, nextCharIndex++);
+			}
+		}
+		return patternFound;
+	}
+	
+	/**
 	 * Simple Rabin-Karp pattern matching using summation algorithm.  Since
 	 * we are using longs, the maximum sum we can have is 256+256+...+256 for
 	 * 2^55 times, and we can assume that this data set is intractable for 
@@ -133,7 +243,7 @@ public class strMatch {
 	 * @param source
 	 * @return
 	 */
-	protected static boolean rabinKarpMatch(String pattern, DataInputStream source)
+	protected static boolean rabinKarpMatch(String pattern, DataInputStream source, boolean USE_SUM)
 	{
 		long srcHash = 0;
 		long patHash = 0;
@@ -155,12 +265,40 @@ public class strMatch {
 			System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
 		}
 
-		// Generate the hash value for the scope
-		for (int i = 0; i < scope.length(); i++) {
-			byte b = (byte)scope.charAt(i);
-
-			srcHash += (long)b & 0xff;
-			assert((long)b >= 0);
+		
+		if (USE_SUM) {
+			// Generate the hash value for the scope
+			// Sum hashing algorithm
+			for (int i = 0; i < scope.length(); i++) {
+				byte b = (byte)scope.charAt(i);
+	
+				srcHash += (long)b & 0xff;
+				assert((long)b >= 0);
+			}
+		} else {
+			// Generate the hash value for the scope
+			// Base hashing algorithm
+			int i = 0;
+	        while (i < scope.length()) {
+	            char b = scope.charAt(i);
+	            
+	            // We are adding a new character, chop off the old one and append a new one
+	            if (i >= pattern.length()) {
+	                srcHash = srcHash - (scope.charAt(0)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+	                if (srcHash < 0) srcHash = 28657 + srcHash;
+	                srcHash = (srcHash*256) % 28657;
+	                srcHash = (srcHash + ((byte)b & 0xFF)) % 28657;
+	                scope = scope.substring(1) + (char)(b & 0xFF);
+	            } else {
+	                srcHash = (srcHash + (b * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+	                scope += b;
+	            }
+	            if (TESTING) {
+		            System.out.println("i=" + i + " substring=" + scope);
+		            System.out.println("mhash=" + srcHash);
+	            }
+	            i++;
+	        }
 		}
 
 		if (TESTING) {
@@ -210,11 +348,38 @@ public class strMatch {
 				} else if ((prevByte == 0x0D) && (b == 0x0A)) {
 					// We skip this byte and compare against a non-modified scope
 				} else {
-					srcHash -= (long)scope.charAt(0) & 0xff;
-					scope = scope.substring(1) + (char)b;
-					prevByte = readByte;
-					assert(scope.length() == pattern.length());
-					srcHash += (long)b & 0xff;
+					if (USE_SUM) {
+						srcHash -= (long)scope.charAt(0) & 0xff;
+						scope = scope.substring(1) + (char)b;
+						prevByte = readByte;
+						assert(scope.length() == pattern.length());
+						srcHash += (long)b & 0xff;
+					} else {
+						// Generate the hash value for the scope
+						// Base hashing algorithm
+						int i = 0;
+				        while (i < scope.length()) {
+				            char currentB = scope.charAt(i);
+				            
+				            // We are adding a new character, chop off the old one and append a new one
+				            if (i >= pattern.length()) {
+				                srcHash = srcHash - (scope.charAt(0)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+				                if (srcHash < 0) srcHash = 28657 + srcHash;
+				                srcHash = (srcHash*256) % 28657;
+				                srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
+				                scope = scope.substring(1) + (char)(currentB & 0xFF);
+				            } else {
+				                srcHash = (srcHash + (currentB * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+				                scope += currentB;
+				            }
+				            if (TESTING) {
+					            System.out.println("i=" + i + " substring=" + scope);
+					            System.out.println("mhash=" + srcHash);
+				            }
+				            i++;
+				        }
+
+					}
 				}
 			} catch (EOFException fu) {
 				if (TESTING) {
@@ -234,7 +399,8 @@ public class strMatch {
 	 * @param pattern
 	 * @return
 	 */
-	protected static String[] getKMPSubStrings(String pattern) {
+	protected static String[] getKMPSubStrings(String pattern)
+	{
 		String[] substrings = new String[pattern.length() + 1];
 		// build array of strings that contain substrings
 		for (int i = 0; i <= pattern.length(); i++) {
@@ -248,7 +414,8 @@ public class strMatch {
 	 * @param s - string to search for a core within
 	 * @return a substring of the search string s, of which is the longest pre/suffix
 	 */
-	protected static String getCoreTest(String s, String[] substrings) {
+	protected static String getCoreTest(String s, String[] substrings)
+	{
 		String core = "";
 		for (int i = 1; i < s.length(); i++) {
 			String tempCore = s.substring(0, i);
@@ -266,7 +433,8 @@ public class strMatch {
 	 * @param pattern - the string to build the core table from
 	 * @return an array of integers which indicate the length of each substring's core
 	 */
-	protected static int[] buildCoreTable(String pattern) {
+	protected static int[] buildCoreTable(String pattern)
+	{
 		String[] substrings = getKMPSubStrings(pattern);
 		int[] table = new int[substrings.length];
 		for (int i = 0; i < substrings.length; i++) {
@@ -289,7 +457,8 @@ public class strMatch {
 	 * @return An array representing b(s), the precomputed jump table
 	 *         for the good suffix heurisitic.
 	 */
-	protected static int[] buildCoreTable2(byte[] p, int[] rt) {
+	protected static int[] buildCoreTable2(byte[] p, int[] rt)
+	{
 		// The pattern length is the size of the table, since each core
 		// calculation involves the next symbol in p[i+direction]
 		assert(rt.length == 256);
@@ -383,7 +552,8 @@ public class strMatch {
 	 * @param p Byte array containing our pattern.
 	 * @return An array representing core table lengths
 	 */
-	protected static int[] buildCoreTable3(byte[] p) {
+	protected static int[] buildCoreTable3(byte[] p)
+	{
 		// The pattern length is the size of the table, since each core
 		// calculation involves the next symbol in p[i+direction]
 
@@ -568,9 +738,9 @@ public class strMatch {
 		return patternFound;
 	}
 
-	protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName) {
+	protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
+	{
 		boolean patternEofFound = false;
-		boolean TESTING = false;
 
 		// Get file set up
 		try {
@@ -651,8 +821,22 @@ public class strMatch {
 					sinput = new FileInputStream(sourceFileName);
 					s = new DataInputStream(sinput); 
 
-					// Rabin-Karp algorithm
-					if (rabinKarpMatch(strPattern, s))
+					// Rabin-Karp algorithm using rolling sum
+					if (rabinKarpMatch(strPattern, s, true))
+						output = "RK MATCHED: " + strPattern;
+					else
+						output = "RK FAILED: " + strPattern;
+					if (TESTING) System.out.println(output);
+					outFile.write((output + "\n").getBytes());
+
+					s.close();
+					sinput.close();
+
+					sinput = new FileInputStream(sourceFileName);
+					s = new DataInputStream(sinput); 
+					
+					// Rabin-Karp algorithm using rolling base
+					if (rabinKarpMatch(strPattern, s, false))
 						output = "RK MATCHED: " + strPattern;
 					else
 						output = "RK FAILED: " + strPattern;
@@ -711,11 +895,11 @@ public class strMatch {
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args)
+	{
 		String patternFileName = args[0];
 		String sourceFileName = args[1];
 		String outputFileName = args[2];
 		runExperiments(patternFileName, sourceFileName, outputFileName);
 	}
-
 }

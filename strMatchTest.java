@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import org.junit.Test;
@@ -16,7 +17,7 @@ import org.junit.Test;
  * @author jasper
  *
  */
-public class strMatchTest {
+public class strMatchTest {	    
 	/**
 	 * Test method for getKMPSubStrings(String)
 	 */
@@ -228,6 +229,97 @@ public class strMatchTest {
 	}
 
 	/**
+	 * Test method for getNextChunkCountBytes(int chunkCount, byte[] source, int leftPoint)
+	 * Try to grab first word
+	 */
+	@Test
+	public void testGetNextChunkCountBytes_frontOfArray() {
+		String test = "There was a little black horse, which loved to run through the forest.";
+		byte[] testArray = test.getBytes();
+		String testResult = strMatch.getNextChunkCountBytes(5, testArray, 0);
+		String expectedResult = "There";
+		assertEquals(expectedResult, testResult);
+	}
+	
+	/**
+	 * Test method for getNextChunkCountBytes(int chunkCount, byte[] source, int leftPoint)
+	 * Try to grab first word
+	 */
+	@Test
+	public void testGetNextChunkCountBytes_backOfArray() {
+		String test = "There was a little black horse, which loved to run through the forest.";
+		byte[] testArray = test.getBytes();
+		String testResult = strMatch.getNextChunkCountBytes(7, testArray, 63);
+		String expectedResult = "forest.";
+		assertEquals(expectedResult, testResult);
+	}
+	
+	/**
+	 * Test method for getNextChunkCountBytes(int chunkCount, byte[] source, int leftPoint)
+	 * Try to grab first word
+	 */
+	@Test
+	public void testGetNextChunkCountBytes_chunkCountOverLengthOfArray() {
+		String test = "There was a little black horse, which loved to run through the forest.";
+		byte[] testArray = test.getBytes();
+		String testResult = strMatch.getNextChunkCountBytes(23, testArray, 63);
+		String expectedResult = "forest.";
+		assertEquals(expectedResult, testResult);
+	}
+	
+	/**
+	 * Testing Match between results of RK match using rolling sum and rolling base functions
+	 */
+	@Test
+	public void testRabinKarpMatch_sumMatch_equals_baseMatch() {
+		int testCount = 0;
+		int numTests = 10;
+		Stopwatch sw = new Stopwatch();
+		String pattern = "ark into the tabernacle";
+		String sourceFileName = "02_exodus.txt";
+		
+		long totalTimeSum 	= 0;
+		long totalTimeBase 	= 0;
+		
+		boolean smatch = false;
+		boolean bmatch = false;
+		
+		try {
+			FileInputStream sinput;
+			DataInputStream source;
+			
+			while (testCount < numTests) {
+				// run RK Match using rolling sum
+				sinput = new FileInputStream(sourceFileName);
+				source = new DataInputStream(sinput); 
+
+				sw.start();
+				smatch = strMatch.rabinKarpMatch(pattern, source, true);
+				sw.stop();
+				totalTimeSum += sw.time();
+			
+				// run RK Match using rolling base
+				sinput = new FileInputStream(sourceFileName);
+				source = new DataInputStream(sinput); 
+				
+				sw.start();
+				bmatch = strMatch.rabinKarpMatch(pattern, source, false);
+				sw.stop();
+				totalTimeBase += sw.time();
+				
+				assertEquals(smatch, bmatch);
+				// iterate to next test
+				testCount++;
+			}
+			System.out.println("Avg time for RKMatch (rolling sum) : " + (totalTimeSum / numTests));
+			System.out.println("Avg time for RKMatch (rolling base): " + (totalTimeBase / numTests));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+	}
+	
+	/**
 	 * Test method for main(java.lang.String[])
 	 */
 	@Test
@@ -258,8 +350,6 @@ public class strMatchTest {
 			System.out.println("IO Exception occurred while accessing f.");
 			r.printStackTrace();
 		}
-		
-		assertTrue(true);
 	}
 
 	/**
@@ -353,7 +443,7 @@ public class strMatchTest {
 //				System.out.println("brute force test: " + i);
 				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
 				DataInputStream sourceStream = new DataInputStream(bstream);
-				found = strMatch.rabinKarpMatch(pattern, sourceStream);
+				found = strMatch.rabinKarpMatch(pattern, sourceStream, true);
 				sourceStream.close();
 				assertEquals(false, found);
 			}
@@ -364,6 +454,8 @@ public class strMatchTest {
 		s.stop();
 		System.out.println("Average time for Rabin-Karp 1: " + (s.time() / testCount));
 	}
+	
+
 	
 	/**
 	 * Testing Timing: KMP Match kmpMatch(String pattern, DataInputStream source)
