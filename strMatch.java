@@ -13,6 +13,7 @@ import java.util.Hashtable;
 
 public class strMatch {
     static boolean TESTING = false;
+    static boolean STATS_ON = true;
     // static variable so our chunk function can notice the last byte of
     // the previous chunk, for the 0x0D,0x0A Windows newline pattern.
     static byte prevByte = 0x00;
@@ -728,14 +729,14 @@ public class strMatch {
      * where m is the length of the pattern.
      *
      * Portions modeled after Boyer-Moore algorithm described on 
-     * p209 of "Theory in Programmig Practice", Misra
+     * p209 of "Theory in Programming Practice", Misra
      * 
      * @param p Byte array containing our pattern.
      * @param rt Integer array of an offset from the left of the pattern.
      *           Size of the array is assumed to be 256 entries, and is 
      *           initialized by the caller to all entries equal -1.
-     * @return An array representing b(s), the precomputed jump table
-     *         for the good suffix heurisitic.
+     * @return An array representing b(s), the pre-computed jump table
+     *         for the good suffix heuristic.
      */
     protected static int[] buildCoreTable2(byte[] p, int[] rt)
     {
@@ -1255,7 +1256,10 @@ public class strMatch {
         return patternFound;
     }
 
-
+    /**
+     * Basic skeleton for various different types of match sub-classes
+     * @author jasper, matt
+     */
     abstract static class Match
     {
         // the search method runs the default search algorithm for each of the 
@@ -1264,16 +1268,15 @@ public class strMatch {
         // you can obtain the proper search return message
         // to meet project requirements, the user must still concatonate the
         // search pattern to the end of the output given by getMyPhrase
-        // example usage:
-        // Match.BruteForceMatch bf = new BruteForceMatch();
-        // String message = bf.getMyPhrase(search(pattern, sourceFileName)) + pattern;
         abstract public String getMyPhrase(boolean found);
+        abstract public String getMyName();
     }
     
     static class BruteForceMatch extends Match
     {
-        private String myPhrase;
+        private String myName, myPhrase;
         public BruteForceMatch() {
+            myName = "Brute Force Match";
             myPhrase = "BF ";
         }
         public boolean search(String pattern, byte[] source) {
@@ -1282,12 +1285,14 @@ public class strMatch {
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
+        public String getMyName() {return myName;}
     }
     
     static class RabinKarpMatch extends Match
     {
-        private String myPhrase;
+        private String myName, myPhrase;
         public RabinKarpMatch() {
+            myName = "Rabin-Karp Match";
             myPhrase = "RK ";
         }
         public boolean search(String pattern, byte[] source) {
@@ -1302,12 +1307,14 @@ public class strMatch {
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
+        public String getMyName() {return myName;}
     }
     
     static class KMPMatch extends Match
     {
-        private String myPhrase;
+        private String myName, myPhrase;
         public KMPMatch() {
+            myName = "Knuth-Morris-Pratt Match";
             myPhrase = "KMP ";
         }
         public boolean search(String pattern, byte[] source) {
@@ -1316,12 +1323,14 @@ public class strMatch {
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
+        public String getMyName() {return myName;}
     }
     
     static class BMooreMatch extends Match
     {
-        private String myPhrase;
+        private String myName, myPhrase;
         public BMooreMatch() {
+            myName = "Boyer-Moore Match";
             myPhrase = "BM ";
         }
         public boolean search(String pattern, byte[] source) {
@@ -1330,6 +1339,7 @@ public class strMatch {
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
+        public String getMyName() {return myName;}
     }
 
     protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
