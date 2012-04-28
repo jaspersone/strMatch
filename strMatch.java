@@ -16,7 +16,7 @@ public class strMatch {
 
 	// static variable so our chunk function can notice the last byte of
 	// the previous chunk, for the 0x0D,0x0A Windows newline pattern.
-	static byte prevByte = 0x00;	
+	static byte prevByte = 0x00;    
 
 	// begin McClure driving
 	/**
@@ -73,7 +73,7 @@ public class strMatch {
 	protected static String getNextChunkCountChars(int chunkCount, DataInputStream source)
 	{
 		assert(chunkCount > 0);
-		String	scope		= "";
+		String  scope       = "";
 		try {
 			for (int i = 0; i < chunkCount; i++) {
 				byte currentByte = source.readByte();
@@ -112,24 +112,24 @@ public class strMatch {
 		// assigns endPoint to leftPoint + chunkCount, unless it goes beyond the size
 		// of the source array
 		int endPoint = ((leftPoint + chunkCount) < source.length) ?
-						(leftPoint + chunkCount) : source.length;
-		for (int i = leftPoint; i < endPoint; i++) {
-			byte currentByte = source[i];
-			// Windows uses two characters to represent a text 
-			// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-			// itself, so convert 0x0D to 0x0A, and absorb
-			// trailing 0x0A if this is a windows newline encoding
-			//
-			if (currentByte == 0x0D) {
-				scope.append((char) 0x0A);
-			} else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
-				// Absorb this iteration...
-			} else {
-				scope.append((char) currentByte);
-			}
-			prevByte = currentByte;
-		}
-		return scope.toString();
+				(leftPoint + chunkCount) : source.length;
+				for (int i = leftPoint; i < endPoint; i++) {
+					byte currentByte = source[i];
+					// Windows uses two characters to represent a text 
+					// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+					// itself, so convert 0x0D to 0x0A, and absorb
+					// trailing 0x0A if this is a windows newline encoding
+					//
+					if (currentByte == 0x0D) {
+						scope.append((char) 0x0A);
+					} else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
+						// Absorb this iteration...
+					} else {
+						scope.append((char) currentByte);
+					}
+					prevByte = currentByte;
+				}
+				return scope.toString();
 	}
 
 	/**
@@ -208,9 +208,9 @@ public class strMatch {
 		if (TESTING) {
 			System.out.println(">>> Brute Force Pattern Match <<<");
 		}
-		int     chunkCount 		= pattern.length();
-		int		nextCharIndex 	= chunkCount;
-		boolean patternFound 	= false;
+		int     chunkCount      = pattern.length();
+		int     nextCharIndex   = chunkCount;
+		boolean patternFound    = false;
 		String  scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
 
 		// Reset our prevByte for our stream parser.
@@ -288,18 +288,18 @@ public class strMatch {
 			// Generate the hash value for the scope
 			// Base hashing algorithm
 			int i = 0;
-	        while (i < scope.length()) {
-	            byte b = (byte)scope.charAt(i);
-	            
-	            // We are adding a new character, chop off the old one and append a new one
-	            srcHash = (srcHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+			while (i < scope.length()) {
+				byte b = (byte)scope.charAt(i);
 
-	            if (TESTING) {
-		            System.out.println("i=" + i + " substring=" + scope);
-		            System.out.println("mhash=" + srcHash);
-	            }
-	            i++;
-	        }
+				// We are adding a new character, chop off the old one and append a new one
+				srcHash = (srcHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+
+				if (TESTING) {
+					System.out.println("i=" + i + " substring=" + scope);
+					System.out.println("mhash=" + srcHash);
+				}
+				i++;
+			}
 		}
 
 		if (TESTING) {
@@ -411,8 +411,8 @@ public class strMatch {
 	 */
 	protected static boolean rabinKarpMatch(String pattern, byte[] source, boolean USE_SUM)
 	{
-		long 	srcHash 		= 0;
-		long 	patHash 		= 0;
+		long    srcHash         = 0;
+		long    patHash         = 0;
 
 		// Reset prevByte for our stream parser.
 		prevByte = 0x00;
@@ -423,9 +423,9 @@ public class strMatch {
 			patHash += (long)b & 0xff;
 		}
 
-		int 	chunkCount 		= pattern.length();
-		int		nextCharIndex 	= chunkCount;
-		boolean patternFound 	= false;
+		int     chunkCount      = pattern.length();
+		int     nextCharIndex   = chunkCount;
+		boolean patternFound    = false;
 		// 0 initializes the buffer to look at left index position 0
 		String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
 
@@ -501,16 +501,16 @@ public class strMatch {
 					// Generate the hash value for the scope
 					// Base hashing algorithm
 					byte currentB = (byte)scope.charAt(0);
-					
-	                srcHash = srcHash - (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-	                if (srcHash < 0) srcHash = 28657 + srcHash;
-	                srcHash = (srcHash*256) % 28657;
-	                srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
-	                scope = scope.substring(1) + (char)(currentB & 0xFF);
 
-	                if (TESTING) {
-			            System.out.println("mhash=" + srcHash);
-		            }
+					srcHash = srcHash - (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+					if (srcHash < 0) srcHash = 28657 + srcHash;
+					srcHash = (srcHash*256) % 28657;
+					srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
+					scope = scope.substring(1) + (char)(currentB & 0xFF);
+
+					if (TESTING) {
+						System.out.println("mhash=" + srcHash);
+					}
 				}
 			}
 		}
@@ -733,10 +733,10 @@ public class strMatch {
 			System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
 		}
 		int     chunkCount = pattern.length();
-		int		bytesToGrab = 0;
+		int     bytesToGrab = 0;
 		boolean patternFound = false;
 		String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-		int[]	c = buildCoreTable3(pattern.getBytes());
+		int[]   c = buildCoreTable3(pattern.getBytes());
 
 		// Reset prevByte for our stream parser.
 		prevByte = 0x00;
@@ -799,7 +799,7 @@ public class strMatch {
 		for(int i = 0; i < rt.length; i++)
 			rt[i] = -1; // initialize rt with all -1 values (flags)
 		int[] b = buildCoreTable2(pattern.getBytes(), rt);
-		int		bytesToGrab = 0;
+		int     bytesToGrab = 0;
 		boolean patternFound = false;
 		String scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
 
@@ -832,7 +832,7 @@ public class strMatch {
 					goodSuffixHeuristic = b[chunkCount-j];
 					badSymbolHeuristic = j - 1 - rt[(int) scope.charAt(j-1) & 0xff];
 
-					// get good suffix heuristic value	    				
+					// get good suffix heuristic value                      
 
 					bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
 
@@ -867,143 +867,143 @@ public class strMatch {
 			DataInputStream p = new DataInputStream(pinput);
 			FileInputStream sinput = new FileInputStream(sourceFileName);
 			DataInputStream s = new DataInputStream(sinput);
-			
+
 			boolean patternEofFound = false;
-			
+
 			// Outer loop over all patterns in the pattern file
 			while (!patternEofFound) {
-				
+
 			}
 
-			} catch (FileNotFoundException ex) {
-				// TODO Auto-generated catch block
-				System.out.println("There was an error opening the file " + ex);
-				ex.printStackTrace();
-			} catch (IOException r) {
-				// TODO Auto-generated catch block
-				System.out.println("IO Exception occurred while accessing f.");
-				r.printStackTrace();
-			}
-
+		} catch (FileNotFoundException ex) {
+			// TODO Auto-generated catch block
+			System.out.println("There was an error opening the file " + ex);
+			ex.printStackTrace();
+		} catch (IOException r) {
+			// TODO Auto-generated catch block
+			System.out.println("IO Exception occurred while accessing f.");
+			r.printStackTrace();
 		}
 
-		protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
-		{
-			// Adding hash table to store algorithm names and assign them switch values
-			// This whole thing should be refactored later
-			Hashtable<String, Integer> algorithms = new Hashtable<String, Integer>();
-			algorithms.put("bruteForceMatch", 0);
-			algorithms.put("bruteForceMatch_byteArray", 1);
-			algorithms.put("rabinKarpMatch", 2);
-			algorithms.put("rabinKarpMatch_byteArray", 3);
-			algorithms.put("kmpMatch", 4);
-			algorithms.put("kmpMatch_byteArray", 5);
-			algorithms.put("bmooreMatch", 6);
-			algorithms.put("bmooreMatch_byteArray", 7);
+	}
 
-			boolean patternEofFound = false;
+	protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
+	{
+		// Adding hash table to store algorithm names and assign them switch values
+		// This whole thing should be refactored later
+		Hashtable<String, Integer> algorithms = new Hashtable<String, Integer>();
+		algorithms.put("bruteForceMatch", 0);
+		algorithms.put("bruteForceMatch_byteArray", 1);
+		algorithms.put("rabinKarpMatch", 2);
+		algorithms.put("rabinKarpMatch_byteArray", 3);
+		algorithms.put("kmpMatch", 4);
+		algorithms.put("kmpMatch_byteArray", 5);
+		algorithms.put("bmooreMatch", 6);
+		algorithms.put("bmooreMatch_byteArray", 7);
 
-			// Get file set up
-			try {
-				FileInputStream pinput = new FileInputStream(patternFileName);
-				DataInputStream p = new DataInputStream(pinput);
-				FileInputStream sinput = new FileInputStream(sourceFileName);
-				DataInputStream s = new DataInputStream(sinput);
-				FileOutputStream outFile = new FileOutputStream(outputFileName);
+		boolean patternEofFound = false;
 
-				// Outer loop over all patterns in the pattern file
-				while (!patternEofFound) {
-					boolean sourceEofFound = false;
-					int     patternAmpCount = 0;
-					String  strPattern = new String("");
-					StringBuilder strTmp = new StringBuilder("");
+		// Get file set up
+		try {
+			FileInputStream pinput = new FileInputStream(patternFileName);
+			DataInputStream p = new DataInputStream(pinput);
+			FileInputStream sinput = new FileInputStream(sourceFileName);
+			DataInputStream s = new DataInputStream(sinput);
+			FileOutputStream outFile = new FileOutputStream(outputFileName);
 
-					// Reset our prevByte for our stream parser
-					prevByte = 0x00;
+			// Outer loop over all patterns in the pattern file
+			while (!patternEofFound) {
+				boolean sourceEofFound = false;
+				int     patternAmpCount = 0;
+				String  strPattern = new String("");
+				StringBuilder strTmp = new StringBuilder("");
 
-					// Read in the pattern from the pattern file.  Per the 
-					// assignment documentation, the pattern is surrounded by
-					// '&'
-					while ((patternAmpCount < 2) && (patternEofFound == false)) {
-						try {
-							byte b = p.readByte();
+				// Reset our prevByte for our stream parser
+				prevByte = 0x00;
 
-							if (b == '&') {
-								patternAmpCount++;
-							} else if (patternAmpCount > 0) {
-								// Windows uses two characters to represent a text 
-								// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-								// itself, so convert 0x0D to 0x0A, and absorb
-								// trailing 0x0A if this is a windows newline encoding
-								//
-								if (b == 0x0D) { 
-									strTmp.append((char)0x0A);
-								} else if ((prevByte == 0x0D) && (b == 0x0A)) {
-									// We skip this byte and compare against a non-modified scope
-								} else { 
-									strTmp.append((char)b);
-								}
+				// Read in the pattern from the pattern file.  Per the 
+				// assignment documentation, the pattern is surrounded by
+				// '&'
+				while ((patternAmpCount < 2) && (patternEofFound == false)) {
+					try {
+						byte b = p.readByte();
+
+						if (b == '&') {
+							patternAmpCount++;
+						} else if (patternAmpCount > 0) {
+							// Windows uses two characters to represent a text 
+							// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+							// itself, so convert 0x0D to 0x0A, and absorb
+							// trailing 0x0A if this is a windows newline encoding
+							//
+							if (b == 0x0D) { 
+								strTmp.append((char)0x0A);
+							} else if ((prevByte == 0x0D) && (b == 0x0A)) {
+								// We skip this byte and compare against a non-modified scope
+							} else { 
+								strTmp.append((char)b);
 							}
-
-							prevByte = b;
-
-						} catch (EOFException fu) {
-							patternEofFound = true;
 						}
+
+						prevByte = b;
+
+					} catch (EOFException fu) {
+						patternEofFound = true;
+					}
+				}
+
+				// Now we have the pattern, so store it in the strPattern
+				strPattern = strTmp.toString();
+
+				if (strPattern.length() > 0) { // do nothing if the string is empty
+					if (TESTING) {
+						System.out.println("***************************************");
+						System.out.println("* Search for '" + strPattern + "'");
+						System.out.println("***************************************");
 					}
 
-					// Now we have the pattern, so store it in the strPattern
-					strPattern = strTmp.toString();
+					sinput = new FileInputStream(sourceFileName);
+					s = new DataInputStream(sinput); 
 
-					if (strPattern.length() > 0) { // do nothing if the string is empty
-						if (TESTING) {
-							System.out.println("***************************************");
-							System.out.println("* Search for '" + strPattern + "'");
-							System.out.println("***************************************");
-						}
+					// Setup output
+					String output = "";
 
-						sinput = new FileInputStream(sourceFileName);
-						s = new DataInputStream(sinput); 
+					// Brute Force String Matching algorithm
+					if (bruteForceMatch(strPattern, s))
+						output = "BF MATCHED: " + strPattern;
+					else
+						output = "BF FAILED: " + strPattern;
+					if (TESTING) System.out.println(output);
+					outFile.write((output + "\n").getBytes());
 
-						// Setup output
-						String output = "";
-
-						// Brute Force String Matching algorithm
-						if (bruteForceMatch(strPattern, s))
-							output = "BF MATCHED: " + strPattern;
-						else
-							output = "BF FAILED: " + strPattern;
-						if (TESTING) System.out.println(output);
-						outFile.write((output + "\n").getBytes());
-
-						s.close();
-						sinput.close();
+					s.close();
+					sinput.close();
 
 					if (TESTING) {
 						File f = new File(sourceFileName);
 						sinput = new FileInputStream(f);
-						
+
 						long offset = 0;
 						long size = f.length();
 						long chunkSize = 1000000; // Best...
 						long overlapSize = strPattern.length() - 1;
-						
+
 						// Open a channel
 						FileChannel fc = sinput.getChannel();
-						
+
 						MappedByteBuffer byteBuffer =
-							fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
-						
+								fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+
 						boolean patternFound = false;
-						
+
 						while ((patternFound == false) && (offset < size)) {
 							byteBuffer.clear();
 							byte[] bytes = new byte[(int)chunkSize];
 							byteBuffer.get(bytes, 0, bytes.length);
-							
+
 							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
 							s = new DataInputStream(bstream);
-							
+
 							// Rabin-Karp algorithm using rolling sum
 							if (rabinKarpMatch(strPattern, s, true)) {
 								patternFound = true;
@@ -1018,58 +1018,58 @@ public class strMatch {
 						else
 							output = "RK FAILED: " + strPattern;
 
-                        if (TESTING) System.out.println(output);
-                        outFile.write((output + "\n").getBytes());
-                        
+						if (TESTING) System.out.println(output);
+						outFile.write((output + "\n").getBytes());
+
 						fc.close();
 						sinput.close();
 					} else {
 						File f = new File(sourceFileName);
 						sinput = new FileInputStream(f);
-						
+
 						long offset = 0;
 						long size = f.length();
 						long chunkSize = 1000000; // Best...
 						long overlapSize = strPattern.length() - 1;
-						
+
 						// Open a channel
 						FileChannel fc = sinput.getChannel();
-						
+
 						MappedByteBuffer byteBuffer =
-							fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
-						
+								fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+
 						boolean patternFound = false;
-						
+
 						System.out.println("I AM RUNNING");
 						while ((patternFound == false) && (offset < size)) {
 							byteBuffer.clear();
 							byte[] bytes = new byte[(int)chunkSize];
 							byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
-							
+
 							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
 							s = new DataInputStream(bstream);
-							
+
 							// Rabin-Karp algorithm using rolling sum
 							if (rabinKarpMatch(strPattern, s, false)) {
 								patternFound = true;
 								break;
 							}
-							
+
 							offset += chunkSize - overlapSize;
 						}
-	
+
 						if (patternFound)
 							output = "RK MATCHED: " + strPattern;
 						else
 							output = "RK FAILED: " + strPattern;
 
-                        if (TESTING) System.out.println(output);
-                        outFile.write((output + "\n").getBytes());
-                        
+						if (TESTING) System.out.println(output);
+						outFile.write((output + "\n").getBytes());
+
 						fc.close();
 						sinput.close();
 					}
-				
+
 					sinput = new FileInputStream(sourceFileName);
 					s = new DataInputStream(sinput); 
 
