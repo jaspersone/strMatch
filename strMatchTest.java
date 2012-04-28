@@ -402,8 +402,6 @@ public class strMatchTest {
 			System.out.println("IO Exception occurred while accessing f.");
 			r.printStackTrace();
 		}
-		
-		assertTrue(true);
 	}
 	
 	/**

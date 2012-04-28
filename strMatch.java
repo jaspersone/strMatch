@@ -1,4 +1,3 @@
-import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
@@ -9,7 +8,6 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
-import java.util.Hashtable;
 
 public class strMatch {
     static boolean TESTING = false;
@@ -895,7 +893,6 @@ public class strMatch {
         int             bytesToGrab = 0;
         boolean         patternFound = false;
         int             nextCharIndex = chunkCount;
-        String          scope; // fill up the scope buffer
         int[]           c;
         RingByteBuffer  byteRing;
 
@@ -1059,8 +1056,6 @@ public class strMatch {
         // Build the core table for Boyer-Moore
         b = buildCoreTable2(pattern.getBytes(), rt);
 
-        String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
-
         // Reset our prevByte for our stream parser.
         prevByte = 0x00;
 
@@ -1219,7 +1214,8 @@ public class strMatch {
             long offset = 0;
             long size = f.length();
             long chunkSize = 1000000; // Best...
-            long overlapSize = pattern.length() - 1;
+            long overlapSize = pattern.length(); // testing with full pattern length
+            // long overlapSize = pattern.length() - 1;
 
             // Open a channel
             FileChannel fc = sinput.getChannel();
@@ -1227,16 +1223,15 @@ public class strMatch {
             MappedByteBuffer byteBuffer =
                     fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
             
-            if (TESTING) {
-                System.out.println("I AM RUNNING");
-            }
             // feed byte buffers to search algorithm and search
             // for matching pattern
-            while ((patternFound == false) && (offset < size)) {
+            while ((!patternFound) && (offset < size)) {
+                if (TESTING) System.out.println("I AM RUNNING");
                 byteBuffer.clear();
                 byte[] bytes = new byte[(int)chunkSize];
                 byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
                 patternFound = algorithm.search(pattern, bytes);
+                if (patternFound) break;
                 offset += chunkSize - overlapSize;
             }
             // close files
@@ -1294,7 +1289,7 @@ public class strMatch {
             myPhrase = "RK ";
         }
         public boolean search(String pattern, byte[] source) {
-            // pass true for using rolling sum or false for using rolling base
+            // pass TRUE for using rolling sum or FALSE for using rolling base
             // default is set to true, because rolling sum seems to be faster in
             // a lot of cases
             return strMatch.rabinKarpMatch(pattern, source, true);
@@ -1357,13 +1352,10 @@ public class strMatch {
         try {
             FileInputStream pinput = new FileInputStream(patternFileName);
             DataInputStream p = new DataInputStream(pinput);
-            FileInputStream sinput = new FileInputStream(sourceFileName);
-            DataInputStream s = new DataInputStream(sinput);
             FileOutputStream outFile = new FileOutputStream(outputFileName);
 
             // Outer loop over all patterns in the pattern file
             while (!patternEofFound) {
-                boolean sourceEofFound = false;
                 int     patternAmpCount = 0;
                 String  strPattern = new String("");
                 StringBuilder strTmp = new StringBuilder("");
@@ -1407,9 +1399,9 @@ public class strMatch {
 
                 if (strPattern.length() > 0) { // only search for strings with chars
                     if (STATS_ON && strPattern.length() > 0) {
-                        System.out.println("***************************************");
-                        System.out.println("* Search for '" + strPattern + "'");
-                        System.out.println("***************************************");
+                        System.out.println("********************************************");
+                        System.out.println("Search for '" + strPattern + "'");
+                        System.out.println("********************************************");
                     }
                     // Loop through each type of match algorithm and run experiment
                     for (strMatch.Match algorithm : matches) {                        
@@ -1422,7 +1414,7 @@ public class strMatch {
                         }
                         outFile.write((output + "\n").getBytes());
                     } // LOOP to next algorithm
-                    if (STATS_ON) System.out.println("\n");
+                    if (STATS_ON) System.out.print("\n");
                 } // don't search if pattern is length is less than 1
             } // LOOP to next pattern
             
