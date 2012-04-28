@@ -278,8 +278,8 @@ public class strMatchTest {
 		String pattern = "ark into the tabernacle";
 		String sourceFileName = "02_exodus.txt";
 		
-		long totalTimeSum 	= 0;
-		long totalTimeBase 	= 0;
+		double totalTimeSum = 0.0;
+		double totalTimeBase = 0.0;
 		
 		boolean smatch = false;
 		boolean bmatch = false;

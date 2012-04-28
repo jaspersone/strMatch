@@ -1,9 +1,13 @@
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 public class strMatch {
@@ -119,7 +123,6 @@ public class strMatch {
 				scope.append((char) 0x0A);
 			} else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
 				// Absorb this iteration...
-				i--;
 			} else {
 				scope.append((char) currentByte);
 			}
@@ -254,7 +257,12 @@ public class strMatch {
 		// Generate the hash value for the pattern
 		for (int i = 0; i < pattern.length(); i++) {
 			byte b = (byte)pattern.charAt(i);
-			patHash += (long)b & 0xff;
+			
+			if (USE_SUM) {
+				patHash += (long)b & 0xff;
+			} else {
+				patHash = (patHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+			}
 		}
 
 		int chunkCount = pattern.length();
@@ -280,19 +288,11 @@ public class strMatch {
 			// Base hashing algorithm
 			int i = 0;
 	        while (i < scope.length()) {
-	            char b = scope.charAt(i);
+	            byte b = (byte)scope.charAt(i);
 	            
 	            // We are adding a new character, chop off the old one and append a new one
-	            if (i >= pattern.length()) {
-	                srcHash = srcHash - (scope.charAt(0)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-	                if (srcHash < 0) srcHash = 28657 + srcHash;
-	                srcHash = (srcHash*256) % 28657;
-	                srcHash = (srcHash + ((byte)b & 0xFF)) % 28657;
-	                scope = scope.substring(1) + (char)(b & 0xFF);
-	            } else {
-	                srcHash = (srcHash + (b * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
-	                scope += b;
-	            }
+	            srcHash = (srcHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+
 	            if (TESTING) {
 		            System.out.println("i=" + i + " substring=" + scope);
 		            System.out.println("mhash=" + srcHash);
@@ -340,11 +340,19 @@ public class strMatch {
 				// trailing 0x0A if this is a windows newline encoding
 				//
 				if (b == 0x0D) {
-					srcHash -= (long)scope.charAt(0) & 0xff;
-					scope = scope.substring(1) + (char)0x0A;
-					prevByte = readByte;
-					assert(scope.length() == pattern.length());
-					srcHash += (long)0x0A;
+					if (USE_SUM) {
+						srcHash -= (long)scope.charAt(0) & 0xff;
+						scope = scope.substring(1) + (char)0x0A;
+						prevByte = readByte;
+						assert(scope.length() == pattern.length());
+						srcHash += (long)0x0A;
+					} else {
+		                srcHash = srcHash - (((byte)scope.charAt(0) & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+		                if (srcHash < 0) srcHash = 28657 + srcHash;
+		                srcHash = (srcHash*256) % 28657;
+		                srcHash = (srcHash + 0x0A) % 28657;
+		                scope = scope.substring(1) + (char)0x0A;
+					}
 				} else if ((prevByte == 0x0D) && (b == 0x0A)) {
 					// We skip this byte and compare against a non-modified scope
 				} else {
@@ -357,27 +365,23 @@ public class strMatch {
 					} else {
 						// Generate the hash value for the scope
 						// Base hashing algorithm
-						int i = 0;
-				        while (i < scope.length()) {
-				            char currentB = scope.charAt(i);
-				            
-				            // We are adding a new character, chop off the old one and append a new one
-				            if (i >= pattern.length()) {
-				                srcHash = srcHash - (scope.charAt(0)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-				                if (srcHash < 0) srcHash = 28657 + srcHash;
-				                srcHash = (srcHash*256) % 28657;
-				                srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
-				                scope = scope.substring(1) + (char)(currentB & 0xFF);
-				            } else {
-				                srcHash = (srcHash + (currentB * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
-				                scope += currentB;
-				            }
-				            if (TESTING) {
-					            System.out.println("i=" + i + " substring=" + scope);
-					            System.out.println("mhash=" + srcHash);
-				            }
-				            i++;
-				        }
+
+			            // We are adding a new character, chop off the old one and append a new one
+		                srcHash = srcHash - (((byte)scope.charAt(0) & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+		                if (srcHash < 0) srcHash = 28657 + srcHash;
+		                srcHash = (srcHash*256) % 28657;
+		                srcHash = (srcHash + ((byte)readByte & 0xFF)) % 28657;
+		                scope = scope.substring(1) + (char)(readByte & 0xFF);
+
+		                assert(srcHash >= 0);
+		                assert(scope.length() == pattern.length());
+		                
+			            if (TESTING) {
+				            System.out.println("substring=" + scope);
+				            System.out.println("mhash=" + srcHash);
+			            }
+				        
+				        prevByte = readByte;
 
 					}
 				}
@@ -394,6 +398,124 @@ public class strMatch {
 		return patternFound;
 	}
 
+	/**
+	 * Simple Rabin-Karp pattern matching using summation algorithm.  Since
+	 * we are using longs, the maximum sum we can have is 256+256+...+256 for
+	 * 2^55 times, and we can assume that this data set is intractable for 
+	 * computational time.  
+	 * 
+	 * @param pattern
+	 * @param source
+	 * @return
+	 */
+	protected static boolean rabinKarpMatch(String pattern, byte[] source, boolean USE_SUM)
+	{
+		long 	srcHash 		= 0;
+		long 	patHash 		= 0;
+
+		// Reset prevByte for our stream parser.
+		prevByte = 0x00;
+
+		// Generate the hash value for the pattern
+		for (int i = 0; i < pattern.length(); i++) {
+			byte b = (byte)pattern.charAt(i);
+			patHash += (long)b & 0xff;
+		}
+
+		int 	chunkCount 		= pattern.length();
+		int		nextCharIndex 	= chunkCount;
+		boolean patternFound 	= false;
+		// 0 initializes the buffer to look at left index position 0
+		String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
+
+		if (TESTING) {
+			System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
+		}
+
+		// Generate the hash value for the scope
+		if (USE_SUM) {
+			// Using sum hashing algorithm
+			for (int i = 0; i < scope.length(); i++) {
+				byte b = (byte)scope.charAt(i);
+	
+				srcHash += (long)b & 0xff;
+				assert((long)b >= 0);
+			}
+		} else {
+			// Using base hashing algorithm
+			int i = 0;
+	        while (i < scope.length()) {
+	            char b = scope.charAt(i);
+	            
+	            // We are adding a new character, chop off the old one and append a new one
+                srcHash = (srcHash + (b * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+
+                if (TESTING) {
+		            System.out.println("i=" + i + " substring=" + scope);
+		            System.out.println("mhash=" + srcHash);
+	            }
+	            i++;
+	        }
+		}
+
+		if (TESTING) {
+			System.out.println("scope=" + scope);
+			System.out.println("Expected srcHash=" + srcHash);
+		}
+
+		//prevByte = ;
+
+		// go through the source and search for the pattern
+		while(!patternFound && nextCharIndex < source.length) {
+			// compare scope so far
+			if (srcHash == patHash) {
+				int i = 0;
+
+				// Do a comparison of the actual strings
+				while (i < chunkCount) {
+					if (pattern.charAt(i) != scope.charAt(i))
+						break;
+					i++;
+				}
+
+				if (i >= chunkCount) {
+					if (TESTING) {
+						System.out.println("PATTERN FOUND!!! YES!!!");
+					}
+					patternFound = true;
+				}
+			} else { // get next scope
+				String temp = getNextChunkCountBytes(1, source, nextCharIndex++);
+				assert(temp.length() == 1);
+				byte readByte = (byte) temp.charAt(0);
+				byte b = readByte;
+	
+				if (USE_SUM) {
+					srcHash -= (long)scope.charAt(0) & 0xff;
+					scope = scope.substring(1) + (char)b;
+					prevByte = readByte;
+					assert(scope.length() == pattern.length());
+					srcHash += (long)b & 0xff;
+				} else {
+					// Generate the hash value for the scope
+					// Base hashing algorithm
+					byte currentB = (byte)scope.charAt(0);
+					
+	                srcHash = srcHash - (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+	                if (srcHash < 0) srcHash = 28657 + srcHash;
+	                srcHash = (srcHash*256) % 28657;
+	                srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
+	                scope = scope.substring(1) + (char)(currentB & 0xFF);
+
+	                if (TESTING) {
+			            System.out.println("mhash=" + srcHash);
+		            }
+				}
+			}
+		}
+		return patternFound;
+	}
+	
 	/**
 	 * 
 	 * @param pattern
@@ -818,34 +940,97 @@ public class strMatch {
 					s.close();
 					sinput.close();
 
-					sinput = new FileInputStream(sourceFileName);
-					s = new DataInputStream(sinput); 
+					if (TESTING) {
+						File f = new File(sourceFileName);
+						sinput = new FileInputStream(f);
+						
+						long offset = 0;
+						long size = f.length();
+						long chunkSize = 1000000; // Best...
+						long overlapSize = strPattern.length() - 1;
+						
+						// Open a channel
+						FileChannel fc = sinput.getChannel();
+						
+						MappedByteBuffer byteBuffer =
+							fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+						
+						boolean patternFound = false;
+						
+						while ((patternFound == false) && (offset < size)) {
+							byteBuffer.clear();
+							byte[] bytes = new byte[(int)chunkSize];
+							byteBuffer.get(bytes, 0, bytes.length);
+							
+							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
+							s = new DataInputStream(bstream);
+							
+							// Rabin-Karp algorithm using rolling sum
+							if (rabinKarpMatch(strPattern, s, true)) {
+								patternFound = true;
+								break;
+							}
 
-					// Rabin-Karp algorithm using rolling sum
-					if (rabinKarpMatch(strPattern, s, true))
-						output = "RK MATCHED: " + strPattern;
-					else
-						output = "RK FAILED: " + strPattern;
-					if (TESTING) System.out.println(output);
-					outFile.write((output + "\n").getBytes());
+							if (TESTING) System.out.println(output);
+							outFile.write((output + "\n").getBytes());
+							
+							offset += chunkSize - overlapSize;
+						}
 
-					s.close();
-					sinput.close();
+						if (patternFound)
+							output = "RK MATCHED: " + strPattern;
+						else
+							output = "RK FAILED: " + strPattern;
+						
+						fc.close();
+						sinput.close();
+					} else {
+						File f = new File(sourceFileName);
+						sinput = new FileInputStream(f);
+						
+						long offset = 0;
+						long size = f.length();
+						long chunkSize = 1000000; // Best...
+						long overlapSize = strPattern.length() - 1;
+						
+						// Open a channel
+						FileChannel fc = sinput.getChannel();
+						
+						MappedByteBuffer byteBuffer =
+							fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+						
+						boolean patternFound = false;
+						
+						System.out.println("I AM RUNNING");
+						while ((patternFound == false) && (offset < size)) {
+							byteBuffer.clear();
+							byte[] bytes = new byte[(int)chunkSize];
+							byteBuffer.get(bytes, 0, bytes.length);
+							
+							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
+							s = new DataInputStream(bstream);
+							
+							// Rabin-Karp algorithm using rolling sum
+							if (rabinKarpMatch(strPattern, s, false)) {
+								patternFound = true;
+								break;
+							}
+							
+							if (TESTING) System.out.println(output);
+							outFile.write((output + "\n").getBytes());
+							
+							offset += chunkSize - overlapSize;
+						}
+	
+						if (patternFound)
+							output = "RK MATCHED: " + strPattern;
+						else
+							output = "RK FAILED: " + strPattern;
 
-					sinput = new FileInputStream(sourceFileName);
-					s = new DataInputStream(sinput); 
-					
-					// Rabin-Karp algorithm using rolling base
-					if (rabinKarpMatch(strPattern, s, false))
-						output = "RK MATCHED: " + strPattern;
-					else
-						output = "RK FAILED: " + strPattern;
-					if (TESTING) System.out.println(output);
-					outFile.write((output + "\n").getBytes());
-
-					s.close();
-					sinput.close();
-
+						fc.close();
+						sinput.close();
+					}
+				
 					sinput = new FileInputStream(sourceFileName);
 					s = new DataInputStream(sinput); 
 
