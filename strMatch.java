@@ -624,9 +624,7 @@ public class strMatch {
             // compare scope so far
             if (srcHash == patHash) {
                 int i = 0;
-
-                System.out.println("Collision found!");
-                
+                if (TESTING) System.out.println("Collision found!");
                 // Do a comparison of the actual strings
                 while (i < chunkCount) {
                     if (pattern.charAt(i) != byteRing.get(i))
@@ -635,9 +633,7 @@ public class strMatch {
                 }
 
                 if (i >= chunkCount) {
-                    if (TESTING) {
-                        System.out.println("PATTERN FOUND!!! YES!!!");
-                    }
+                    if (TESTING) System.out.println("PATTERN FOUND!!! YES!!!");
                     patternFound = true;
                 }
             } 
@@ -1199,21 +1195,54 @@ public class strMatch {
         }
         return patternFound;
     }
-
-    protected static void experimentWrapper(Hashtable<String, Integer> algorithms, String searchAlgorithm, String patternFileName, String sourceFileName) {
+    /**
+     * Experiment Wrapper takes a particular experiment and buffers the input
+     * stream to ensure efficient processing of large files. This hides the
+     * the method of gathering the file input from the actual matching algorithms,
+     * which still operate on each buffered chunk as a normal file
+     * @param algorithm - the class of search algorithm that will be used for this
+     *                    experiment
+     * @param pattern   - the pattern that the algorithm is searching for
+     * @param sourceFileName - the original source file that will be buffered by
+     *                    experimentWrapper
+     * @return a boolean value that indicates whether or not the file has discovered
+     *         the pattern within the source file. Early return of true if the as soon
+     *         as the first instance of the pattern is discovered.
+     */
+    protected static boolean experimentWrapper(strMatch.Match algorithm, String pattern, String sourceFileName) {
+        boolean patternFound = false;
         try {
-            FileInputStream pinput = new FileInputStream(patternFileName);
-            DataInputStream p = new DataInputStream(pinput);
-            FileInputStream sinput = new FileInputStream(sourceFileName);
-            DataInputStream s = new DataInputStream(sinput);
+            File f = new File(sourceFileName);
+            FileInputStream sinput = new FileInputStream(f);
 
-            boolean patternEofFound = false;
+            long offset = 0;
+            long size = f.length();
+            long chunkSize = 1000000; // Best...
+            long overlapSize = pattern.length() - 1;
 
-            // Outer loop over all patterns in the pattern file
-            while (!patternEofFound) {
+            // Open a channel
+            FileChannel fc = sinput.getChannel();
 
+            MappedByteBuffer byteBuffer =
+                    fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+            
+            if (TESTING) {
+                System.out.println("I AM RUNNING");
             }
+            while ((patternFound == false) && (offset < size)) {
+                byteBuffer.clear();
+                byte[] bytes = new byte[(int)chunkSize];
+                byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
 
+                if (algorithm.search(pattern, bytes)) {
+                    patternFound = true;
+                    break;
+                }
+                offset += chunkSize - overlapSize;
+            }
+            // close files
+            fc.close();
+            sinput.close();
         } catch (FileNotFoundException ex) {
             // TODO Auto-generated catch block
             System.out.println("There was an error opening the file " + ex);
@@ -1223,69 +1252,80 @@ public class strMatch {
             System.out.println("IO Exception occurred while accessing f.");
             r.printStackTrace();
         }
-
+        return patternFound;
     }
 
 
-    abstract static class Match {
+    abstract static class Match
+    {
         // the search method runs the default search algorithm for each of the 
-        abstract public boolean search(String pattern, byte[] sourceFileName);
+        abstract public boolean search(String pattern, byte[] source);
         // By passing search(String pattern, sourceFileName to getMyPhrase,
         // you can obtain the proper search return message
         // to meet project requirements, the user must still concatonate the
         // search pattern to the end of the output given by getMyPhrase
         // example usage:
-        // BruteForceMatch bf = new BruteForceMatch();
+        // Match.BruteForceMatch bf = new BruteForceMatch();
         // String message = bf.getMyPhrase(search(pattern, sourceFileName)) + pattern;
         abstract public String getMyPhrase(boolean found);
     }
     
-    static class BruteForceMatch extends Match {
+    static class BruteForceMatch extends Match
+    {
         private String myPhrase;
         public BruteForceMatch() {
             myPhrase = "BF ";
         }
-        public boolean search(String pattern, byte[] sourceFileName) {
-            return false;
+        public boolean search(String pattern, byte[] source) {
+            return strMatch.bruteForceMatch(pattern, source);
         }
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
     }
     
-    static class RabinKarpMatch extends Match {
+    static class RabinKarpMatch extends Match
+    {
         private String myPhrase;
         public RabinKarpMatch() {
             myPhrase = "RK ";
         }
-        public boolean search(String pattern, byte[] sourceFileName) {
-            return false;
+        public boolean search(String pattern, byte[] source) {
+            // pass true for using rolling sum or false for using rolling base
+            // default is set to true, because rolling sum seems to be faster in
+            // a lot of cases
+            return strMatch.rabinKarpMatch(pattern, source, true);
+        }
+        public boolean search(String pattern, byte[] source, boolean USE_SUM) {
+            return strMatch.rabinKarpMatch(pattern, source, USE_SUM);
         }
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
     }
     
-    static class KMPMatch extends Match {
+    static class KMPMatch extends Match
+    {
         private String myPhrase;
         public KMPMatch() {
             myPhrase = "KMP ";
         }
-        public boolean search(String pattern, byte[] sourceFileName) {
-            return false;
+        public boolean search(String pattern, byte[] source) {
+            return strMatch.kmpMatch(pattern, source);
         }
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
         }
     }
     
-    static class BMooreMatch extends Match {
+    static class BMooreMatch extends Match
+    {
         private String myPhrase;
         public BMooreMatch() {
             myPhrase = "BM ";
         }
-        public boolean search(String pattern, byte[] sourceFileName) {
-            return false;
+        public boolean search(String pattern, byte[] source) {
+            return strMatch.bmooreMatch(pattern, source);
         }
         public String getMyPhrase(boolean found) {
             return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
@@ -1294,17 +1334,13 @@ public class strMatch {
 
     protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
     {
-        // Adding hash table to store algorithm names and assign them switch values
-        // This whole thing should be refactored later
-        Hashtable<String, Integer> algorithms = new Hashtable<String, Integer>();
-        algorithms.put("bruteForceMatch", 0);
-        algorithms.put("bruteForceMatch_byteArray", 1);
-        algorithms.put("rabinKarpMatch", 2);
-        algorithms.put("rabinKarpMatch_byteArray", 3);
-        algorithms.put("kmpMatch", 4);
-        algorithms.put("kmpMatch_byteArray", 5);
-        algorithms.put("bmooreMatch", 6);
-        algorithms.put("bmooreMatch_byteArray", 7);
+        // create instances of various types of match wrappers
+        // to prepare polymorphic search
+        strMatch.BruteForceMatch bf = new strMatch.BruteForceMatch();
+        strMatch.RabinKarpMatch  rk = new strMatch.RabinKarpMatch();
+        strMatch.KMPMatch       kmp = new strMatch.KMPMatch();
+        strMatch.BMooreMatch     bm = new strMatch.BMooreMatch();
+        strMatch.Match[]    matches = {bf, rk, kmp, bm};
 
         boolean patternEofFound = false;
 
@@ -1359,155 +1395,21 @@ public class strMatch {
 
                 // Now we have the pattern, so store it in the strPattern
                 strPattern = strTmp.toString();
-
-                if (strPattern.length() > 0) { // do nothing if the string is empty
-                    if (TESTING) {
-                        System.out.println("***************************************");
-                        System.out.println("* Search for '" + strPattern + "'");
-                        System.out.println("***************************************");
-                    }
-
-                    sinput = new FileInputStream(sourceFileName);
-                    s = new DataInputStream(sinput); 
-
-                    // Setup output
-                    String output = "";
-
-                    // Brute Force String Matching algorithm
-                    if (bruteForceMatch(strPattern, s))
-                        output = "BF MATCHED: " + strPattern;
-                    else
-                        output = "BF FAILED: " + strPattern;
-                    if (TESTING) System.out.println(output);
-                    outFile.write((output + "\n").getBytes());
-
-                    s.close();
-                    sinput.close();
-
-                    if (TESTING) {
-                        File f = new File(sourceFileName);
-                        sinput = new FileInputStream(f);
-
-                        long offset = 0;
-                        long size = f.length();
-                        long chunkSize = 1000000; // Best...
-                        long overlapSize = strPattern.length() - 1;
-
-                        // Open a channel
-                        FileChannel fc = sinput.getChannel();
-
-                        MappedByteBuffer byteBuffer =
-                                fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
-
-                        boolean patternFound = false;
-
-                        while ((patternFound == false) && (offset < size)) {
-                            byteBuffer.clear();
-                            byte[] bytes = new byte[(int)chunkSize];
-                            byteBuffer.get(bytes, 0, bytes.length);
-
-                            ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
-                            s = new DataInputStream(bstream);
-
-                            // Rabin-Karp algorithm using rolling sum
-                            if (rabinKarpMatch(strPattern, s, true)) {
-                                patternFound = true;
-                                break;
-                            }
-
-                            offset += chunkSize - overlapSize;
+                
+                // Loop through each type of match algorithm and run experiment
+                for (strMatch.Match algorithm : matches) {
+                    if (strPattern.length() > 0) { // only search for strings with chars
+                        if (TESTING) {
+                            System.out.println("***************************************");
+                            System.out.println("* Search for '" + strPattern + "'");
+                            System.out.println("***************************************");
                         }
-
-                        if (patternFound)
-                            output = "RK MATCHED: " + strPattern;
-                        else
-                            output = "RK FAILED: " + strPattern;
-
-                        if (TESTING) System.out.println(output);
+                    
+                        // Setup output
+                        String output = algorithm.getMyPhrase(experimentWrapper(algorithm, strPattern, sourceFileName));
                         outFile.write((output + "\n").getBytes());
-
-                        fc.close();
-                        sinput.close();
-                    } else {
-                        File f = new File(sourceFileName);
-                        sinput = new FileInputStream(f);
-
-                        long offset = 0;
-                        long size = f.length();
-                        long chunkSize = 1000000; // Best...
-                        long overlapSize = strPattern.length() - 1;
-
-                        // Open a channel
-                        FileChannel fc = sinput.getChannel();
-
-                        MappedByteBuffer byteBuffer =
-                                fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
-
-                        boolean patternFound = false;
-
-                        System.out.println("I AM RUNNING");
-                        while ((patternFound == false) && (offset < size)) {
-                            byteBuffer.clear();
-                            byte[] bytes = new byte[(int)chunkSize];
-                            byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
-
-                            if (bmooreMatch(strPattern, bytes)) {
-                                patternFound = true;
-                                break;
-                            }
-
-/*                            ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
-                            s = new DataInputStream(bstream);
-
-                            // Rabin-Karp algorithm using rolling sum
-                            if (rabinKarpMatch(strPattern, s, false)) {
-                                patternFound = true;
-                                break;
-                            }
-*/
-                            offset += chunkSize - overlapSize;
-                        }
-
-                        if (patternFound)
-                            output = "RK MATCHED: " + strPattern;
-                        else
-                            output = "RK FAILED: " + strPattern;
-
-                        if (TESTING) System.out.println(output);
-                        outFile.write((output + "\n").getBytes());
-
-                        fc.close();
-                        sinput.close();
-                    }
-
-                    sinput = new FileInputStream(sourceFileName);
-                    s = new DataInputStream(sinput); 
-
-                    // Knuth-Morris-Pratt algorithm
-                    if (kmpMatch(strPattern, s))
-                        output = "KMP MATCHED: " + strPattern;
-                    else
-                        output = "KMP FAILED: " + strPattern;
-                    if (TESTING) System.out.println(output);
-                    outFile.write((output + "\n").getBytes());
-
-                    s.close();
-                    sinput.close();
-
-                    sinput = new FileInputStream(sourceFileName);
-                    s = new DataInputStream(sinput); 
-
-                    // Boyer-Moore algorithm
-                    if (bmooreMatch(strPattern, s))
-                        output = "BM MATCHED: " + strPattern;
-                    else
-                        output = "BM FAILED: " + strPattern;
-                    if (TESTING) System.out.println(output);
-                    outFile.write((output + "\n").getBytes());
-
-                    s.close();
-                    sinput.close();
-                }
+                    } else break; // do nothing if the string is empty
+                } // LOOP to next algorithm
             } // LOOP to next pattern
 
             // close output file
