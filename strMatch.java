@@ -991,9 +991,6 @@ public class strMatch {
 								break;
 							}
 
-							if (TESTING) System.out.println(output);
-							outFile.write((output + "\n").getBytes());
-							
 							offset += chunkSize - overlapSize;
 						}
 
@@ -1001,7 +998,10 @@ public class strMatch {
 							output = "RK MATCHED: " + strPattern;
 						else
 							output = "RK FAILED: " + strPattern;
-						
+
+                        if (TESTING) System.out.println(output);
+                        outFile.write((output + "\n").getBytes());
+                        
 						fc.close();
 						sinput.close();
 					} else {
@@ -1025,7 +1025,7 @@ public class strMatch {
 						while ((patternFound == false) && (offset < size)) {
 							byteBuffer.clear();
 							byte[] bytes = new byte[(int)chunkSize];
-							byteBuffer.get(bytes, 0, bytes.length);
+							byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
 							
 							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
 							s = new DataInputStream(bstream);
@@ -1036,9 +1036,6 @@ public class strMatch {
 								break;
 							}
 							
-							if (TESTING) System.out.println(output);
-							outFile.write((output + "\n").getBytes());
-							
 							offset += chunkSize - overlapSize;
 						}
 	
@@ -1047,6 +1044,9 @@ public class strMatch {
 						else
 							output = "RK FAILED: " + strPattern;
 
+                        if (TESTING) System.out.println(output);
+                        outFile.write((output + "\n").getBytes());
+                        
 						fc.close();
 						sinput.close();
 					}
