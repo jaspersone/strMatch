@@ -1,1 +1,36 @@
 BF MATCHED: shit
+RK MATCHED: shit
+KMP MATCHED: shit
+BM MATCHED: shit
+BF FAILED: end of days
+RK FAILED: end of days
+KMP FAILED: end of days
+BM FAILED: end of days
+BF FAILED: mayans
+RK FAILED: mayans
+KMP FAILED: mayans
+BM FAILED: mayans
+BF FAILED: science
+rules
+RK FAILED: science
+rules
+KMP FAILED: science
+rules
+BM FAILED: science
+rules
+BF FAILED: How many fish
+RK FAILED: How many fish
+KMP FAILED: How many fish
+BM FAILED: How many fish
+BF FAILED: Lake travis
+RK FAILED: Lake travis
+KMP FAILED: Lake travis
+BM FAILED: Lake travis
+BF MATCHED: children of Israel
+RK MATCHED: children of Israel
+KMP MATCHED: children of Israel
+BM MATCHED: children of Israel
+BF MATCHED: the country of 
+RK MATCHED: the country of 
+KMP MATCHED: the country of 
+BM MATCHED: the country of 

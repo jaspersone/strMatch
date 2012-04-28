@@ -922,7 +922,7 @@ public class strMatch {
         
         for(int i = 0; i < rt.length; i++)
             rt[i] = -1; // initialize rt with all -1 values (flags)
-        
+
         // Build the core table for Boyer-Moore
         b = buildCoreTable2(pattern.getBytes(), rt);
 
@@ -930,7 +930,7 @@ public class strMatch {
         
         // Reset our prevByte for our stream parser.
         prevByte = 0x00;
-        
+
         // note that the left most will always be 0 in our version
         // t = scope
         // r = right index
@@ -939,28 +939,28 @@ public class strMatch {
         // Q1: Every occurrence of p in t that begins before index l 
         //     has been previously found.
         // Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
-        
+
         while (!patternFound) {
             int j;
             for (j = chunkCount; j > 0; j--) {
                 // Case 1: j > 0 ^ p[j-1] = t[l+j-1]
                 // nothing to do, because this loop will iterate r
-                
+
                 if (pattern.charAt(j-1) != scope.charAt(j-1)) {
                     // Case 2: Q1 ^ Q2 ^ (j == 0 v p[j-1] != t[l+j-1])
                     int badSymbolHeuristic = 0;
                     int goodSuffixHeuristic = 0;
-                    
+
                     // Since j is the rightmost index into the pattern,
                     // it reflects the b(s) for the suffix starting at 
                     // j.
                     goodSuffixHeuristic = b[chunkCount-j];
                     badSymbolHeuristic = j - 1 - rt[(int) scope.charAt(j-1) & 0xff];
-                    
+
                     // Determine the total increment due to the mismatch, 
-                    // the maximum of the badSymboleHeuristic and the goodSuffixHeuristic.                    
+                    // the maximum of the badSymboleHeuristic and the goodSuffixHeuristic.
                     bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
-                    
+
                     if (TESTING) {
                         System.out.println("Scope: " + scope);
                         System.out.println("badSH= " + badSymbolHeuristic + " goodSH= " + goodSuffixHeuristic);

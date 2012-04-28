@@ -17,7 +17,7 @@ import org.junit.Test;
  * @author jasper
  *
  */
-public class strMatchTest {	    
+public class strMatchTest {	
 	/**
 	 * Test method for getKMPSubStrings(String)
 	 */
