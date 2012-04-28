@@ -412,6 +412,7 @@ public class strMatch {
 	{
 		long 	srcHash 		= 0;
 		long 	patHash 		= 0;
+        long    prime           = 28657;
 
 		// Reset prevByte for our stream parser.
 		prevByte = 0x00;
@@ -448,7 +449,8 @@ public class strMatch {
 	            char b = scope.charAt(i);
 	            
 	            // We are adding a new character, chop off the old one and append a new one
-                srcHash = (srcHash + (b * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+                srcHash = (srcHash + 
+                    (b * fastExp(256, pattern.length() - i - 1, prime) % prime)) % prime;
 
                 if (TESTING) {
 		            System.out.println("i=" + i + " substring=" + scope);
@@ -501,10 +503,18 @@ public class strMatch {
 					// Base hashing algorithm
 					byte currentB = (byte)scope.charAt(0);
 					
-	                srcHash = srcHash - (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-	                if (srcHash < 0) srcHash = 28657 + srcHash;
-	                srcHash = (srcHash*256) % 28657;
-	                srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
+                    // Subtract out the first character in the scope
+	                srcHash = srcHash - 
+                        (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, prime) % prime);
+                    
+                    // Modulo arithmetic
+                    // 49 is congruent to -1 modulo 50
+	                if (srcHash < 0) srcHash = prime + srcHash;
+                    
+                    // Promote all previous characters by multiplying by the base
+	                srcHash = (srcHash*256) % prime;
+                    
+	                srcHash = (srcHash + ((byte)currentB & 0xFF)) % prime;
 	                scope = scope.substring(1) + (char)(currentB & 0xFF);
 
 	                if (TESTING) {
@@ -726,6 +736,68 @@ public class strMatch {
 	 * @param source Source text that we will traverse for a pattern match.
 	 * @return TRUE if pattern found, FALSE if pattern not found.
 	 */ 
+	protected static boolean kmpMatch(String pattern, byte[] source)
+	{
+		if (TESTING) {
+			System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
+		}
+		int     chunkCount = pattern.length();
+		int		bytesToGrab = 0;
+		boolean patternFound = false;
+  		int		nextCharIndex = chunkCount;
+		String  scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
+		int[]	c = buildCoreTable3(pattern.getBytes());
+        
+		// Reset prevByte for our stream parser.
+		prevByte = 0x00;
+        
+		// note that the left most will always be 0 in our version
+		// t = scope
+		// r = right index
+		// l = left index (always 0 in our implementation)
+		// p = pattern
+        
+		while (!patternFound) {
+			int r;
+			for (r = 0; r < chunkCount; r++) {
+				// Case 1: t[r] = p[r-l]
+				// nothing to do, because this loop will iterate r
+                
+				if (pattern.charAt(r) != scope.charAt(r)) {
+					// Case 2: t[r] != p[r-l] and r = l
+					if (r == 0) {
+						bytesToGrab = 1;
+					} else { // Case 3: t[r] != p[r-l] and r > l
+						bytesToGrab = r - c[r];
+					}
+					break; // early break out of the loop because no match
+				}
+			}
+			// if we made it through the loop and everything matches
+			if (r == chunkCount) {
+				patternFound = true;
+				if (TESTING) {
+					System.out.println("PATTERN FOUND!!! YES!!!");
+				}
+			} else { // something didn't match, so get next scope
+				scope = scope.substring(bytesToGrab) + getNextChunkCountBytes(bytesToGrab, source, nextCharIndex);
+                nextCharIndex += bytesToGrab;
+				if (scope.length() != chunkCount) {
+					return false;
+				}
+			}
+		}
+		return patternFound;
+	}
+    
+	/**
+	 * Implements the Knuth-Morris-Pratt algorithm as described
+	 * in CS337, Eberlein and "Theory in Programming Practice", Misra.
+	 *
+	 * @param pattern Input pattern to search for.
+	 * @param source Source text that we will traverse for a pattern match.
+	 * @return TRUE if pattern found, FALSE if pattern not found.
+	 */ 
 	protected static boolean kmpMatch(String pattern, DataInputStream source)
 	{
 		if (TESTING) {
@@ -778,6 +850,90 @@ public class strMatch {
 		return patternFound;
 	}
 
+	/**
+	 * Implementation of Boyer-Moore pattern matching algorithm
+	 * as described in CS337, Eberlein and 
+	 * "Theory in Programming Practice", Misra.
+	 *
+	 * @param pattern Input pattern to search for.
+	 * @param source Source text that we will traverse for a pattern match.
+	 * @return TRUE if pattern found, FALSE if pattern not found.
+	 */ 
+	protected static boolean bmooreMatch(String pattern, byte[] source)
+	{
+		if (TESTING) {
+			System.out.println(">>> Boyer-Moore Pattern Match <<<");
+		}
+		int     chunkCount = pattern.length();
+		if (chunkCount <= 0) return true; 
+		int[] rt = new int[256];
+		for(int i = 0; i < rt.length; i++)
+			rt[i] = -1; // initialize rt with all -1 values (flags)
+		int[] b = buildCoreTable2(pattern.getBytes(), rt);
+		int		bytesToGrab = 0;
+   		int		nextCharIndex = chunkCount;
+		boolean patternFound = false;
+		String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
+        
+		// Reset our prevByte for our stream parser.
+		prevByte = 0x00;
+        
+		// note that the left most will always be 0 in our version
+		// t = scope
+		// r = right index
+		// l = left index (always 0 in our implementation)
+		// p = pattern
+		// Q1: Every occurrence of p in t that begins before index l 
+		//     has been previously found.
+		// Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
+        
+		while (!patternFound) {
+			int j;
+			for (j = chunkCount; j > 0; j--) {
+				// Case 1: j > 0 ^ p[j-1] = t[l+j-1]
+				// nothing to do, because this loop will iterate r
+                
+				if (pattern.charAt(j-1) != scope.charAt(j-1)) {
+					// Case 2: Q1 ^ Q2 ^ (j == 0 v p[j-1] != t[l+j-1])
+					int badSymbolHeuristic = 0;
+					int goodSuffixHeuristic = 0;
+                    
+					// Since j is the rightmost index into the pattern,
+					// it reflects the b(s) for the suffix starting at 
+					// j.
+					goodSuffixHeuristic = b[chunkCount-j];
+					badSymbolHeuristic = j - 1 - rt[(int) scope.charAt(j-1) & 0xff];
+                    
+					// Determine the total increment due to the mismatch, 
+                    // the maximum of the badSymboleHeuristic and the goodSuffixHeuristic.                    
+					bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
+                    
+					if (TESTING) {
+						System.out.println("Scope: " + scope);
+						System.out.println("badSH= " + badSymbolHeuristic + " goodSH= " + goodSuffixHeuristic);
+                        
+						System.out.println("About to break");
+					}
+					break; // early break out of the loop because no match
+				}
+			}
+			// if we made it through the loop and everything matches
+			if (j <= 0) {
+				patternFound = true;
+				if (TESTING) {
+					System.out.println("PATTERN FOUND!!! YES!!!");
+				}
+			} else { // something didn't match, so get next scope
+				scope = scope.substring(bytesToGrab) + getNextChunkCountBytes(bytesToGrab, source, nextCharIndex);
+                nextCharIndex += bytesToGrab;                
+				if (scope.length() != chunkCount) {
+					return false;
+				}
+			}
+		}
+		return patternFound;
+	}
+    
 	/**
 	 * Implementation of Boyer-Moore pattern matching algorithm
 	 * as described in CS337, Eberlein and 
@@ -1026,7 +1182,12 @@ public class strMatch {
 							byteBuffer.clear();
 							byte[] bytes = new byte[(int)chunkSize];
 							byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
-							
+
+							//if (bmooreMatch(strPattern, bytes)) {
+                            //    patternFound = true;
+                            //    break;
+                            //}
+                                
 							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
 							s = new DataInputStream(bstream);
 							
