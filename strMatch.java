@@ -198,10 +198,13 @@ public class strMatch {
     }
 
     /**
-     * 
-     * @param pattern
-     * @param source
-     * @return
+     * Brute force pattern matching algorithm.  Checks each source byte as 
+     * the leftmost comparison with the pattern.
+     *
+     * @param pattern Incoming pattern we want to find the the source.
+     * @param source Source byte array we are trying to match a subset with the 
+     *        given pattern.
+     * @return TRUE if the pattern was found, FALSE if the pattern was not found.
      */
     protected static boolean bruteForceMatch(String pattern, byte[] source)
     {
@@ -213,6 +216,12 @@ public class strMatch {
         boolean patternFound    = false;
         String  scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
 
+        if (pattern.length() > source.length)
+            return false;
+        
+        if (chunkCount <= 0) 
+            return true; 
+        
         // Reset our prevByte for our stream parser.
         prevByte = 0x00;
 
@@ -405,28 +414,39 @@ public class strMatch {
      * 2^55 times, and we can assume that this data set is intractable for 
      * computational time.  
      * 
-     * @param pattern
-     * @param source
-     * @return
+     * @param pattern Incoming pattern we want to find the the source.
+     * @param source Source byte array we are trying to match the pattern with.
+     * @return TRUE if the pattern was found, FALSE if the pattern was not found.
      */
     protected static boolean rabinKarpMatch(String pattern, byte[] source, boolean USE_SUM)
     {
-        long     srcHash         = 0;
-        long     patHash         = 0;
-        long    prime           = 28657;
+        int         chunkCount      = pattern.length();
+        int         nextCharIndex   = chunkCount;
+        boolean     patternFound    = false;
+        long        srcHash         = 0;
+        long        patHash         = 0;
+        long        prime           = 28657;
 
+        if (pattern.length() > source.length)
+            return false;
+        
+        if (chunkCount <= 0) 
+            return true; 
+        
         // Reset prevByte for our stream parser.
         prevByte = 0x00;
 
         // Generate the hash value for the pattern
         for (int i = 0; i < pattern.length(); i++) {
             byte b = (byte)pattern.charAt(i);
-            patHash += (long)b & 0xff;
+
+            if (USE_SUM) {
+                patHash += (long)b & 0xFF;
+            } else {
+                patHash = (patHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+            }
         }
 
-        int     chunkCount      = pattern.length();
-        int     nextCharIndex   = chunkCount;
-        boolean patternFound    = false;
         // 0 initializes the buffer to look at left index position 0
         String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
 
@@ -440,7 +460,7 @@ public class strMatch {
             for (int i = 0; i < scope.length(); i++) {
                 byte b = (byte)scope.charAt(i);
 
-                srcHash += (long)b & 0xff;
+                srcHash += (long)b & 0xFF;
                 assert((long)b >= 0);
             }
         } else {
@@ -448,11 +468,11 @@ public class strMatch {
             int i = 0;
 
             while (i < scope.length()) {
-                char b = scope.charAt(i);
+                byte b = (byte)scope.charAt(i);
                 
                 // We are adding a new character, chop off the old one and append a new one
                 srcHash = (srcHash + 
-                    (b * fastExp(256, pattern.length() - i - 1, prime) % prime)) % prime;
+                    (((byte)b & 0xFF) * fastExp(256, pattern.length() - i - 1, prime) % prime)) % prime;
 
                 if (TESTING) {
                     System.out.println("i=" + i + " substring=" + scope);
@@ -475,6 +495,8 @@ public class strMatch {
             if (srcHash == patHash) {
                 int i = 0;
 
+                System.out.println("Collision found!");
+                
                 // Do a comparison of the actual strings
                 while (i < chunkCount) {
                     if (pattern.charAt(i) != scope.charAt(i))
@@ -488,18 +510,20 @@ public class strMatch {
                     }
                     patternFound = true;
                 }
-            } else { // get next scope
+            } 
+            
+            if (patternFound == false) { // get next scope
                 String temp = getNextChunkCountBytes(1, source, nextCharIndex++);
                 assert(temp.length() == 1);
                 byte readByte = (byte) temp.charAt(0);
                 byte b = readByte;
 
                 if (USE_SUM) {
-                    srcHash -= (long)scope.charAt(0) & 0xff;
+                    srcHash -= (long)scope.charAt(0) & 0xFF;
                     scope = scope.substring(1) + (char)b;
                     prevByte = readByte;
                     assert(scope.length() == pattern.length());
-                    srcHash += (long)b & 0xff;
+                    srcHash += (long)b & 0xFF;
                 } else {
                     // Generate the hash value for the scope
                     // Base hashing algorithm
@@ -516,12 +540,14 @@ public class strMatch {
                     // Promote all previous characters by multiplying by the base
                     srcHash = (srcHash*256) % prime;
                     
-                    srcHash = (srcHash + ((byte)currentB & 0xFF)) % prime;
-                    scope = scope.substring(1) + (char)(currentB & 0xFF);
+                    srcHash = (srcHash + ((byte)readByte & 0xFF)) % prime;
+                    scope = scope.substring(1) + (char)(readByte & 0xFF);
 
                     if (TESTING) {
                         System.out.println("mhash=" + srcHash);
                     }
+                    
+                    prevByte = readByte;
                 }
             }
         }
@@ -734,21 +760,33 @@ public class strMatch {
      * Implements the Knuth-Morris-Pratt algorithm as described
      * in CS337, Eberlein and "Theory in Programming Practice", Misra.
      *
-     * @param pattern Input pattern to search for.
-     * @param source Source text that we will traverse for a pattern match.
-     * @return TRUE if pattern found, FALSE if pattern not found.
+     * @param pattern Incoming pattern we want to find the the source.
+     * @param source Source byte array we are trying to match a subset with the 
+     *        given pattern.
+     * @return TRUE if the pattern was found, FALSE if the pattern was not found.
      */ 
     protected static boolean kmpMatch(String pattern, byte[] source)
     {
         if (TESTING) {
             System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
         }
-        int     chunkCount = pattern.length();
-        int        bytesToGrab = 0;
-        boolean patternFound = false;
-          int        nextCharIndex = chunkCount;
-        String  scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
-        int[]    c = buildCoreTable3(pattern.getBytes());
+        int         chunkCount = pattern.length();
+        int         bytesToGrab = 0;
+        boolean     patternFound = false;
+        int         nextCharIndex = chunkCount;
+        String      scope; // fill up the scope buffer
+        int[]       c;
+
+        if (pattern.length() > source.length)
+            return false;
+
+        if (chunkCount <= 0) 
+            return true; 
+        
+        scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
+
+        // Build the core table for our algorithm.
+        c = buildCoreTable3(pattern.getBytes());
         
         // Reset prevByte for our stream parser.
         prevByte = 0x00;
@@ -857,25 +895,38 @@ public class strMatch {
      * as described in CS337, Eberlein and 
      * "Theory in Programming Practice", Misra.
      *
-     * @param pattern Input pattern to search for.
-     * @param source Source text that we will traverse for a pattern match.
-     * @return TRUE if pattern found, FALSE if pattern not found.
+     * @param pattern Incoming pattern we want to find the the source.
+     * @param source Source byte array we are trying to match a subset with the 
+     *        given pattern.
+     * @return TRUE if the pattern was found, FALSE if the pattern was not found.
      */ 
     protected static boolean bmooreMatch(String pattern, byte[] source)
     {
+        int         chunkCount = pattern.length();
+        int[]       rt = new int[256];
+        int[]       b;
+        int         bytesToGrab = 0;
+        int         nextCharIndex = chunkCount;
+        boolean     patternFound = false;
+        String      scope; // fill up the scope buffer
+        
         if (TESTING) {
             System.out.println(">>> Boyer-Moore Pattern Match <<<");
         }
-        int     chunkCount = pattern.length();
-        if (chunkCount <= 0) return true; 
-        int[] rt = new int[256];
+
+        if (pattern.length() > source.length)
+            return false;
+        
+        if (chunkCount <= 0) 
+            return true; 
+        
         for(int i = 0; i < rt.length; i++)
             rt[i] = -1; // initialize rt with all -1 values (flags)
-        int[] b = buildCoreTable2(pattern.getBytes(), rt);
-        int        bytesToGrab = 0;
-           int        nextCharIndex = chunkCount;
-        boolean patternFound = false;
-        String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
+        
+        // Build the core table for Boyer-Moore
+        b = buildCoreTable2(pattern.getBytes(), rt);
+
+        scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
         
         // Reset our prevByte for our stream parser.
         prevByte = 0x00;
@@ -1203,12 +1254,12 @@ public class strMatch {
                             byte[] bytes = new byte[(int)chunkSize];
                             byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
 
-                            //if (bmooreMatch(strPattern, bytes)) {
-                            //    patternFound = true;
-                            //    break;
-                            //}
+                            if (rabinKarpMatch(strPattern, bytes, false)) {
+                                patternFound = true;
+                                break;
+                            }
 
-                            ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
+/*                            ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
                             s = new DataInputStream(bstream);
 
                             // Rabin-Karp algorithm using rolling sum
@@ -1216,7 +1267,7 @@ public class strMatch {
                                 patternFound = true;
                                 break;
                             }
-
+*/
                             offset += chunkSize - overlapSize;
                         }
 
