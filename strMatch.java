@@ -1232,20 +1232,12 @@ public class strMatch {
             }
             // feed byte buffers to search algorithm and search
             // for matching pattern
-            Stopwatch sw = new Stopwatch();
-            if (STATS_ON) {
-                sw.start();
-            }
             while ((patternFound == false) && (offset < size)) {
                 byteBuffer.clear();
                 byte[] bytes = new byte[(int)chunkSize];
                 byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
                 patternFound = algorithm.search(pattern, bytes);
                 offset += chunkSize - overlapSize;
-            }
-            if (STATS_ON) {
-                sw.stop();
-                System.out.println(algorithm.getMyName() + " time: " + sw.time());
             }
             // close files
             fc.close();
@@ -1357,6 +1349,7 @@ public class strMatch {
         strMatch.KMPMatch       kmp = new strMatch.KMPMatch();
         strMatch.BMooreMatch     bm = new strMatch.BMooreMatch();
         strMatch.Match[]    matches = {bf, rk, kmp, bm};
+        Stopwatch sw = new Stopwatch(); // to collect stats
 
         boolean patternEofFound = false;
 
@@ -1411,23 +1404,28 @@ public class strMatch {
 
                 // Now we have the pattern, so store it in the strPattern
                 strPattern = strTmp.toString();
-                
-                // Loop through each type of match algorithm and run experiment
-                for (strMatch.Match algorithm : matches) {
-                    if (strPattern.length() > 0) { // only search for strings with chars
-                        if (TESTING) {
-                            System.out.println("***************************************");
-                            System.out.println("* Search for '" + strPattern + "'");
-                            System.out.println("***************************************");
-                        }
-                    
-                        // Setup output
-                        String output = algorithm.getMyPhrase(experimentWrapper(algorithm, strPattern, sourceFileName)) + strPattern;
-                        outFile.write((output + "\n").getBytes());
-                    } else break; // do nothing if the string is empty
-                } // LOOP to next algorithm
-            } // LOOP to next pattern
 
+                if (strPattern.length() > 0) { // only search for strings with chars
+                    if (STATS_ON && strPattern.length() > 0) {
+                        System.out.println("***************************************");
+                        System.out.println("* Search for '" + strPattern + "'");
+                        System.out.println("***************************************");
+                    }
+                    // Loop through each type of match algorithm and run experiment
+                    for (strMatch.Match algorithm : matches) {                        
+                        // Setup output
+                        if (STATS_ON) sw.start();
+                        String output = algorithm.getMyPhrase(experimentWrapper(algorithm, strPattern, sourceFileName)) + strPattern;
+                        if (STATS_ON) {
+                            sw.stop();
+                            System.out.println(algorithm.getMyName() + " time: " + sw.time());                            
+                        }
+                        outFile.write((output + "\n").getBytes());
+                    } // LOOP to next algorithm
+                    if (STATS_ON) System.out.println("\n");
+                } // don't search if pattern is length is less than 1
+            } // LOOP to next pattern
+            
             // close output file
             outFile.flush();
             outFile.close();
