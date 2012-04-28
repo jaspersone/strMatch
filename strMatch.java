@@ -13,10 +13,9 @@ import java.util.Hashtable;
 
 public class strMatch {
     static boolean TESTING = false;
-
     // static variable so our chunk function can notice the last byte of
     // the previous chunk, for the 0x0D,0x0A Windows newline pattern.
-    static byte prevByte = 0x00;    
+    static byte prevByte = 0x00;
 
     // Helper class for a rotating ring buffer.
     public static class RingByteBuffer {
@@ -1190,7 +1189,7 @@ public class strMatch {
                 patternFound = true;
                 if (TESTING) {
                     System.out.println("PATTERN FOUND!!! YES!!!");
-                }
+                } 
             } else { // something didn't match, so get next scope
                 scope = scope.substring(bytesToGrab) + getNextChunkCountChars(bytesToGrab, source);
                 if (scope.length() != chunkCount) {
@@ -1225,6 +1224,72 @@ public class strMatch {
             r.printStackTrace();
         }
 
+    }
+
+
+    abstract static class Match {
+        // the search method runs the default search algorithm for each of the 
+        abstract public boolean search(String pattern, byte[] sourceFileName);
+        // By passing search(String pattern, sourceFileName to getMyPhrase,
+        // you can obtain the proper search return message
+        // to meet project requirements, the user must still concatonate the
+        // search pattern to the end of the output given by getMyPhrase
+        // example usage:
+        // BruteForceMatch bf = new BruteForceMatch();
+        // String message = bf.getMyPhrase(search(pattern, sourceFileName)) + pattern;
+        abstract public String getMyPhrase(boolean found);
+    }
+    
+    static class BruteForceMatch extends Match {
+        private String myPhrase;
+        public BruteForceMatch() {
+            myPhrase = "BF ";
+        }
+        public boolean search(String pattern, byte[] sourceFileName) {
+            return false;
+        }
+        public String getMyPhrase(boolean found) {
+            return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
+        }
+    }
+    
+    static class RabinKarpMatch extends Match {
+        private String myPhrase;
+        public RabinKarpMatch() {
+            myPhrase = "RK ";
+        }
+        public boolean search(String pattern, byte[] sourceFileName) {
+            return false;
+        }
+        public String getMyPhrase(boolean found) {
+            return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
+        }
+    }
+    
+    static class KMPMatch extends Match {
+        private String myPhrase;
+        public KMPMatch() {
+            myPhrase = "KMP ";
+        }
+        public boolean search(String pattern, byte[] sourceFileName) {
+            return false;
+        }
+        public String getMyPhrase(boolean found) {
+            return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
+        }
+    }
+    
+    static class BMooreMatch extends Match {
+        private String myPhrase;
+        public BMooreMatch() {
+            myPhrase = "BM ";
+        }
+        public boolean search(String pattern, byte[] sourceFileName) {
+            return false;
+        }
+        public String getMyPhrase(boolean found) {
+            return found ? (myPhrase + "MATCHED: ") : (myPhrase + "FAILED: ");
+        }
     }
 
     protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)

@@ -8,17 +8,36 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import org.junit.Test;
-
-/**
- * 
- */
-
 /**
  * @author jasper
  *
  */
 public class strMatchTest {	
-	/**
+
+    /**
+     * Test getMyPhrase for each subclass of Match
+     */
+    @Test
+    public void testGetMyPhrase() {
+        strMatch.BruteForceMatch    bf  = new strMatch.BruteForceMatch();
+        strMatch.RabinKarpMatch     rk  = new strMatch.RabinKarpMatch();
+        strMatch.KMPMatch           kmp = new strMatch.KMPMatch();
+        strMatch.BMooreMatch        bm  = new strMatch.BMooreMatch();
+        strMatch.Match []       matches = {bf, rk, kmp, bm};
+        String [] expectedResults       = {"BF ", "RK ", "KMP ", "BM "};
+        for (int i = 0; i < matches.length; i++) {
+            String tempTrue             = matches[i].getMyPhrase(true);
+            String tempFalse            = matches[i].getMyPhrase(false);
+            String expectedResultTrue   = expectedResults[i] + "MATCHED: ";
+            String expectedResultFalse   = expectedResults[i] + "FAILED: ";
+            assertEquals(expectedResultTrue, tempTrue);
+            assertEquals(expectedResultFalse, tempFalse);
+        }
+        
+    }
+    
+    
+    /**
 	 * Test method for getKMPSubStrings(String)
 	 */
 	@Test
