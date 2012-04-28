@@ -1406,7 +1406,7 @@ public class strMatch {
                         }
                     
                         // Setup output
-                        String output = algorithm.getMyPhrase(experimentWrapper(algorithm, strPattern, sourceFileName));
+                        String output = algorithm.getMyPhrase(experimentWrapper(algorithm, strPattern, sourceFileName)) + strPattern;
                         outFile.write((output + "\n").getBytes());
                     } else break; // do nothing if the string is empty
                 } // LOOP to next algorithm
