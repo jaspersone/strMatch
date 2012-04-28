@@ -1230,16 +1230,22 @@ public class strMatch {
             if (TESTING) {
                 System.out.println("I AM RUNNING");
             }
+            // feed byte buffers to search algorithm and search
+            // for matching pattern
+            Stopwatch sw = new Stopwatch();
+            if (STATS_ON) {
+                sw.start();
+            }
             while ((patternFound == false) && (offset < size)) {
                 byteBuffer.clear();
                 byte[] bytes = new byte[(int)chunkSize];
                 byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
-
-                if (algorithm.search(pattern, bytes)) {
-                    patternFound = true;
-                    break;
-                }
+                patternFound = algorithm.search(pattern, bytes);
                 offset += chunkSize - overlapSize;
+            }
+            if (STATS_ON) {
+                sw.stop();
+                System.out.println(algorithm.getMyName() + " time: " + sw.time());
             }
             // close files
             fc.close();
