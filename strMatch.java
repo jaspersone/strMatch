@@ -859,6 +859,26 @@ public class strMatch {
 		}
 		return patternFound;
 	}
+	
+	protected static void experimentWrapper(String searchAlgorithm, String patternFileName, String sourceFileName) {
+		
+		try {
+			FileInputStream pinput = new FileInputStream(patternFileName);
+			DataInputStream p = new DataInputStream(pinput);
+			FileInputStream sinput = new FileInputStream(sourceFileName);
+			DataInputStream s = new DataInputStream(sinput);
+			
+		} catch (FileNotFoundException ex) {
+			// TODO Auto-generated catch block
+			System.out.println("There was an error opening the file " + ex);
+			ex.printStackTrace();
+		} catch (IOException r) {
+			// TODO Auto-generated catch block
+			System.out.println("IO Exception occurred while accessing f.");
+			r.printStackTrace();
+		}
+		
+	}
 
 	protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
 	{
