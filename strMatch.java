@@ -18,6 +18,92 @@ public class strMatch {
     // the previous chunk, for the 0x0D,0x0A Windows newline pattern.
     static byte prevByte = 0x00;    
 
+    // Helper class for a rotating ring buffer.
+    public static class RingByteBuffer {
+        // Local data store for the Ring Buffer
+        byte[]  array = null;
+        
+        // The index of the most recent element added
+        int     myHead;
+        
+        // The index of the least recent element added
+        int     myTail;
+        
+        // Size of the array, for computing modulo indexing and implied
+        // removal on an add to a full array.
+        int     myLimit;
+        
+        // Number of active elements in the array
+        int     myNumElements;
+        
+        /**
+         * Constructor for the RingByteBuffer
+         */
+        public RingByteBuffer(int limit) {
+            myHead = 0;
+            myTail = 0;
+            myLimit = limit;
+            array = new byte[limit];
+        }
+        
+        /**
+         * Add a byte to the array, removing the oldest entry from visibility
+         * once the size of the buffer reaches the limit.
+         */
+        public void add(byte e) {
+            // Move the tail only on a replace
+            if (myNumElements == myLimit)
+                myTail = (myTail + 1) % myLimit;
+            
+            array[myHead] = e;
+
+            // Increment head to the next position
+            myHead = (myHead + 1) % myLimit;
+            myNumElements = Math.min(myNumElements+1, myLimit);
+        }
+        
+        public void addRange(byte[] s, int start, int count) {
+            for (int i = start; i < start + count; i++) {
+                add(s[i]);
+            }
+        }
+        
+        /**
+         * Get the ith element in the array, adjusted for ring addressing.
+         */
+        public byte get(int index) {
+            return array[(myTail + index) % myLimit];
+        }
+        
+        /**
+         * Get the head of the array, which was the last element inserted
+         */
+        public byte getHead() {
+            if ((myHead-1) < 0) 
+                return array[myLimit - 1];
+            else 
+                return array[myHead - 1];
+        }
+        
+        /**
+         * Returns the number of elements
+         */
+        public int size() {
+            return myNumElements;
+        }
+        
+        /**
+         * Helper function for toString
+         */
+        public String toString() {
+            String  str = new String("");
+            for (int i = 0; i < myNumElements; i++) {
+                str += get(i);
+            }
+            return str;
+        }
+    }
+    
     // begin McClure driving
     /**
      * Helper function for fast exponentiation
@@ -113,25 +199,58 @@ public class strMatch {
         // of the source array
         int endPoint = ((leftPoint + chunkCount) < source.length) ?
                 (leftPoint + chunkCount) : source.length;
-                for (int i = leftPoint; i < endPoint; i++) {
-                    byte currentByte = source[i];
-                    // Windows uses two characters to represent a text 
-                    // newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-                    // itself, so convert 0x0D to 0x0A, and absorb
-                    // trailing 0x0A if this is a windows newline encoding
-                    //
-                    if (currentByte == 0x0D) {
-                        scope.append((char) 0x0A);
-                    } else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
-                        // Absorb this iteration...
-                    } else {
-                        scope.append((char) currentByte);
-                    }
-                    prevByte = currentByte;
-                }
-                return scope.toString();
+        
+        for (int i = leftPoint; i < endPoint; i++) {
+             byte currentByte = source[i];
+             // Windows uses two characters to represent a text 
+             // newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+             // itself, so convert 0x0D to 0x0A, and absorb
+             // trailing 0x0A if this is a windows newline encoding
+             //
+             if (currentByte == 0x0D) {
+                 scope.append((char) 0x0A);
+             } else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
+                 // Absorb this iteration...
+             } else {
+                 scope.append((char) currentByte);
+             }
+             prevByte = currentByte;
+        }
+        return scope.toString();
     }
 
+    protected static int 
+    getNextChunkCountRingByteBuffer(
+        int chunkCount, byte[] source, int leftPoint, RingByteBuffer ring)
+    {
+        assert(chunkCount > 0);
+        assert(leftPoint >= 0 && leftPoint < source.length);
+        
+        // assigns endPoint to leftPoint + chunkCount, unless it goes beyond the size
+        // of the source array
+        int endPoint = ((leftPoint + chunkCount) < source.length) ?
+            (leftPoint + chunkCount) : source.length;
+        
+        for (int i = leftPoint; i < endPoint; i++) {
+            byte currentByte = source[i];
+            // Windows uses two characters to represent a text 
+            // newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+            // itself, so convert 0x0D to 0x0A, and absorb
+            // trailing 0x0A if this is a windows newline encoding
+            //
+            if (currentByte == 0x0D) {
+                ring.add((byte)0x0A);
+            } else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
+                // Absorb this iteration...
+            } else {
+                ring.add(currentByte);
+            }
+            prevByte = currentByte;
+        }
+        
+        return Math.max(endPoint - leftPoint, 0);
+    }
+    
     /**
      * 
      * @param pattern
@@ -211,26 +330,33 @@ public class strMatch {
         if (TESTING) {
             System.out.println(">>> Brute Force Pattern Match <<<");
         }
-        int     chunkCount      = pattern.length();
-        int     nextCharIndex   = chunkCount;
-        boolean patternFound    = false;
-        String  scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
-
+        int             chunkCount      = pattern.length();
+        int             nextCharIndex   = chunkCount;
+        boolean         patternFound    = false;
+        RingByteBuffer  byteRing;
+        
+        
         if (pattern.length() > source.length)
             return false;
         
         if (chunkCount <= 0) 
             return true; 
-        
+
         // Reset our prevByte for our stream parser.
         prevByte = 0x00;
-
+        
+        // Initialize the ring buffer
+        byteRing = new RingByteBuffer(chunkCount);
+        
+        // Copy the first chunkCount bytes of source into the ring
+        getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
+        
         // go through the source and search for the pattern
         while(!patternFound && nextCharIndex < source.length) {
             // compare scope so far
             int i = 0;
             while (i < chunkCount) {
-                if (pattern.charAt(i) != scope.charAt(i))
+                if (pattern.charAt(i) != byteRing.get(i))
                     break;
                 i++;
             }
@@ -240,7 +366,7 @@ public class strMatch {
                 }
                 patternFound = true;
             } else { // get the next char
-                scope = scope.substring(1) + getNextChunkCountBytes(1, source, nextCharIndex++);
+                getNextChunkCountRingByteBuffer(1, source, nextCharIndex++, byteRing);
             }
         }
         return patternFound;
@@ -256,7 +382,8 @@ public class strMatch {
      * @param source
      * @return
      */
-    protected static boolean rabinKarpMatch(String pattern, DataInputStream source, boolean USE_SUM)
+    protected static boolean 
+    rabinKarpMatch(String pattern, DataInputStream source, boolean USE_SUM)
     {
         long srcHash = 0;
         long patHash = 0;
@@ -420,12 +547,13 @@ public class strMatch {
      */
     protected static boolean rabinKarpMatch(String pattern, byte[] source, boolean USE_SUM)
     {
-        int         chunkCount      = pattern.length();
-        int         nextCharIndex   = chunkCount;
-        boolean     patternFound    = false;
-        long        srcHash         = 0;
-        long        patHash         = 0;
-        long        prime           = 28657;
+        int             chunkCount      = pattern.length();
+        int             nextCharIndex   = chunkCount;
+        boolean         patternFound    = false;
+        long            srcHash         = 0;
+        long            patHash         = 0;
+        long            prime           = 28657;
+        RingByteBuffer  byteRing;
 
         if (pattern.length() > source.length)
             return false;
@@ -435,7 +563,13 @@ public class strMatch {
         
         // Reset prevByte for our stream parser.
         prevByte = 0x00;
-
+        
+        // Initialize the ring buffer
+        byteRing = new RingByteBuffer(chunkCount);
+        
+        // Copy the first chunkCount bytes of source into the ring
+        getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
+        
         // Generate the hash value for the pattern
         for (int i = 0; i < pattern.length(); i++) {
             byte b = (byte)pattern.charAt(i);
@@ -447,9 +581,6 @@ public class strMatch {
             }
         }
 
-        // 0 initializes the buffer to look at left index position 0
-        String scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
-
         if (TESTING) {
             System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
         }
@@ -457,8 +588,8 @@ public class strMatch {
         // Generate the hash value for the scope
         if (USE_SUM) {
             // Using sum hashing algorithm
-            for (int i = 0; i < scope.length(); i++) {
-                byte b = (byte)scope.charAt(i);
+            for (int i = 0; i < byteRing.size(); i++) {
+                byte b = (byte)byteRing.get(i);
 
                 srcHash += (long)b & 0xFF;
                 assert((long)b >= 0);
@@ -467,15 +598,15 @@ public class strMatch {
             // Using base hashing algorithm
             int i = 0;
 
-            while (i < scope.length()) {
-                byte b = (byte)scope.charAt(i);
+            while (i < byteRing.size()) {
+                byte b = (byte)byteRing.get(i);
                 
                 // We are adding a new character, chop off the old one and append a new one
                 srcHash = (srcHash + 
                     (((byte)b & 0xFF) * fastExp(256, pattern.length() - i - 1, prime) % prime)) % prime;
 
                 if (TESTING) {
-                    System.out.println("i=" + i + " substring=" + scope);
+                    System.out.println("i=" + i + " substring=" + byteRing);
                     System.out.println("mhash=" + srcHash);
                 }
                 i++;
@@ -483,7 +614,7 @@ public class strMatch {
         }
 
         if (TESTING) {
-            System.out.println("scope=" + scope);
+            System.out.println("scope=" +  byteRing);
             System.out.println("Expected srcHash=" + srcHash);
         }
 
@@ -499,7 +630,7 @@ public class strMatch {
                 
                 // Do a comparison of the actual strings
                 while (i < chunkCount) {
-                    if (pattern.charAt(i) != scope.charAt(i))
+                    if (pattern.charAt(i) != byteRing.get(i))
                         break;
                     i++;
                 }
@@ -513,25 +644,21 @@ public class strMatch {
             } 
             
             if (patternFound == false) { // get next scope
-                String temp = getNextChunkCountBytes(1, source, nextCharIndex++);
-                assert(temp.length() == 1);
-                byte readByte = (byte) temp.charAt(0);
-                byte b = readByte;
-
+                byte lastByte = byteRing.get(0);
+                getNextChunkCountRingByteBuffer(1, source, nextCharIndex++, byteRing);
+                byte readByte = byteRing.getHead();
+                
                 if (USE_SUM) {
-                    srcHash -= (long)scope.charAt(0) & 0xFF;
-                    scope = scope.substring(1) + (char)b;
+                    srcHash -= (long)lastByte & 0xFF;
+                    assert(byteRing.size() == pattern.length());
+                    srcHash += (long)readByte & 0xFF;
                     prevByte = readByte;
-                    assert(scope.length() == pattern.length());
-                    srcHash += (long)b & 0xFF;
                 } else {
                     // Generate the hash value for the scope
                     // Base hashing algorithm
-                    byte currentB = (byte)scope.charAt(0);
-                    
                     // Subtract out the first character in the scope
                     srcHash = srcHash - 
-                        (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, prime) % prime);
+                        (((byte)lastByte & 0xFF)*fastExp(256, pattern.length() - 1, prime) % prime);
                     
                     // Modulo arithmetic
                     // 49 is congruent to -1 modulo 50
@@ -539,9 +666,7 @@ public class strMatch {
                     
                     // Promote all previous characters by multiplying by the base
                     srcHash = (srcHash*256) % prime;
-                    
                     srcHash = (srcHash + ((byte)readByte & 0xFF)) % prime;
-                    scope = scope.substring(1) + (char)(readByte & 0xFF);
 
                     if (TESTING) {
                         System.out.println("mhash=" + srcHash);
@@ -770,12 +895,13 @@ public class strMatch {
         if (TESTING) {
             System.out.println(">>> Knuth-Morris-Pratt Pattern Match <<<");
         }
-        int         chunkCount = pattern.length();
-        int         bytesToGrab = 0;
-        boolean     patternFound = false;
-        int         nextCharIndex = chunkCount;
-        String      scope; // fill up the scope buffer
-        int[]       c;
+        int             chunkCount = pattern.length();
+        int             bytesToGrab = 0;
+        boolean         patternFound = false;
+        int             nextCharIndex = chunkCount;
+        String          scope; // fill up the scope buffer
+        int[]           c;
+        RingByteBuffer  byteRing;
 
         if (pattern.length() > source.length)
             return false;
@@ -783,13 +909,17 @@ public class strMatch {
         if (chunkCount <= 0) 
             return true; 
         
-        scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
-
+        // Reset our prevByte for our stream parser.
+        prevByte = 0x00;
+        
+        // Initialize the ring buffer
+        byteRing = new RingByteBuffer(chunkCount);
+        
+        // Copy the first chunkCount bytes of source into the ring
+        getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
+        
         // Build the core table for our algorithm.
         c = buildCoreTable3(pattern.getBytes());
-        
-        // Reset prevByte for our stream parser.
-        prevByte = 0x00;
         
         // note that the left most will always be 0 in our version
         // t = scope
@@ -797,13 +927,13 @@ public class strMatch {
         // l = left index (always 0 in our implementation)
         // p = pattern
         
-        while (!patternFound) {
+        while ((!patternFound) && (nextCharIndex <= source.length)) {
             int r;
             for (r = 0; r < chunkCount; r++) {
                 // Case 1: t[r] = p[r-l]
                 // nothing to do, because this loop will iterate r
                 
-                if (pattern.charAt(r) != scope.charAt(r)) {
+                if (pattern.charAt(r) != byteRing.get(r)) {
                     // Case 2: t[r] != p[r-l] and r = l
                     if (r == 0) {
                         bytesToGrab = 1;
@@ -820,11 +950,9 @@ public class strMatch {
                     System.out.println("PATTERN FOUND!!! YES!!!");
                 }
             } else { // something didn't match, so get next scope
-                scope = scope.substring(bytesToGrab) + getNextChunkCountBytes(bytesToGrab, source, nextCharIndex);
+                getNextChunkCountRingByteBuffer(bytesToGrab, source, 
+                                                nextCharIndex, byteRing);
                 nextCharIndex += bytesToGrab;
-                if (scope.length() != chunkCount) {
-                    return false;
-                }
             }
         }
         return patternFound;
@@ -902,13 +1030,14 @@ public class strMatch {
      */ 
     protected static boolean bmooreMatch(String pattern, byte[] source)
     {
-        int         chunkCount = pattern.length();
-        int[]       rt = new int[256];
-        int[]       b;
-        int         bytesToGrab = 0;
-        int         nextCharIndex = chunkCount;
-        boolean     patternFound = false;
-        String      scope; // fill up the scope buffer
+        int             chunkCount = pattern.length();
+        int[]           rt = new int[256];
+        int[]           b;
+        int             bytesToGrab = 0;
+        int             nextCharIndex = chunkCount;
+        boolean         patternFound = false;
+        RingByteBuffer  byteRing;
+
         
         if (TESTING) {
             System.out.println(">>> Boyer-Moore Pattern Match <<<");
@@ -919,17 +1048,21 @@ public class strMatch {
         
         if (chunkCount <= 0) 
             return true; 
+
+        // Reset our prevByte for our stream parser.
+        prevByte = 0x00;
+        
+        // Initialize the ring buffer
+        byteRing = new RingByteBuffer(chunkCount);
+        
+        // Copy the first chunkCount bytes of source into the ring
+        getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
         
         for(int i = 0; i < rt.length; i++)
             rt[i] = -1; // initialize rt with all -1 values (flags)
         
         // Build the core table for Boyer-Moore
         b = buildCoreTable2(pattern.getBytes(), rt);
-
-        scope = getNextChunkCountBytes(chunkCount, source, 0); // fill up the scope buffer
-        
-        // Reset our prevByte for our stream parser.
-        prevByte = 0x00;
         
         // note that the left most will always be 0 in our version
         // t = scope
@@ -940,13 +1073,13 @@ public class strMatch {
         //     has been previously found.
         // Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
         
-        while (!patternFound) {
+        while ((!patternFound) && (nextCharIndex <= source.length)) {
             int j;
             for (j = chunkCount; j > 0; j--) {
                 // Case 1: j > 0 ^ p[j-1] = t[l+j-1]
                 // nothing to do, because this loop will iterate r
                 
-                if (pattern.charAt(j-1) != scope.charAt(j-1)) {
+                if (pattern.charAt(j-1) != byteRing.get(j-1)) {
                     // Case 2: Q1 ^ Q2 ^ (j == 0 v p[j-1] != t[l+j-1])
                     int badSymbolHeuristic = 0;
                     int goodSuffixHeuristic = 0;
@@ -955,14 +1088,14 @@ public class strMatch {
                     // it reflects the b(s) for the suffix starting at 
                     // j.
                     goodSuffixHeuristic = b[chunkCount-j];
-                    badSymbolHeuristic = j - 1 - rt[(int) scope.charAt(j-1) & 0xff];
+                    badSymbolHeuristic = j - 1 - rt[(int) byteRing.get(j-1) & 0xff];
                     
                     // Determine the total increment due to the mismatch, 
                     // the maximum of the badSymboleHeuristic and the goodSuffixHeuristic.                    
                     bytesToGrab = Math.max(badSymbolHeuristic, goodSuffixHeuristic);
                     
                     if (TESTING) {
-                        System.out.println("Scope: " + scope);
+                        System.out.println("Scope: " + byteRing);
                         System.out.println("badSH= " + badSymbolHeuristic + " goodSH= " + goodSuffixHeuristic);
                         
                         System.out.println("About to break");
@@ -977,11 +1110,9 @@ public class strMatch {
                     System.out.println("PATTERN FOUND!!! YES!!!");
                 }
             } else { // something didn't match, so get next scope
-                scope = scope.substring(bytesToGrab) + getNextChunkCountBytes(bytesToGrab, source, nextCharIndex);
-                nextCharIndex += bytesToGrab;                
-                if (scope.length() != chunkCount) {
-                    return false;
-                }
+                getNextChunkCountRingByteBuffer(bytesToGrab, source, 
+                                                nextCharIndex, byteRing);
+                nextCharIndex += bytesToGrab;
             }
         }
         return patternFound;
@@ -1254,7 +1385,7 @@ public class strMatch {
                             byte[] bytes = new byte[(int)chunkSize];
                             byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
 
-                            if (rabinKarpMatch(strPattern, bytes, false)) {
+                            if (bmooreMatch(strPattern, bytes)) {
                                 patternFound = true;
                                 break;
                             }
