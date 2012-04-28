@@ -9,57 +9,58 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.Hashtable;
 
 public class strMatch {
 	static boolean TESTING = false;
-	
+
 	// static variable so our chunk function can notice the last byte of
 	// the previous chunk, for the 0x0D,0x0A Windows newline pattern.
 	static byte prevByte = 0x00;	
 
 	// begin McClure driving
 	/**
-     * Helper function for fast exponentiation
-     * 
-     * a^b (mod n)
-     * 
-     * Arguments:
-     * a - Base of the number, MUST BE NONNEGATIVE
-     * b - Exponent of the number, MUST BE NONNEGATIVE
-     * n - Modulus for the exponentiation
-     *
-     * Returns:
-     * Result of the calculation a^b (mod n)
-     */
-    static long fastExp(long a, long b, long n)
-    {
-        long c = 1, k = 0;
+	 * Helper function for fast exponentiation
+	 * 
+	 * a^b (mod n)
+	 * 
+	 * Arguments:
+	 * a - Base of the number, MUST BE NONNEGATIVE
+	 * b - Exponent of the number, MUST BE NONNEGATIVE
+	 * n - Modulus for the exponentiation
+	 *
+	 * Returns:
+	 * Result of the calculation a^b (mod n)
+	 */
+	static long fastExp(long a, long b, long n)
+	{
+		long c = 1, k = 0;
 
-        // Return a bad value if we have bad inputs
-        if ((a < 0) || (b < 0))
-            return -1;
+		// Return a bad value if we have bad inputs
+		if ((a < 0) || (b < 0))
+			return -1;
 
-        // Find the topmost bit location
-        while ((1 << k+1) <= b)
-            k++;
+		// Find the topmost bit location
+		while ((1 << k+1) <= b)
+			k++;
 
-        // Fast exponentiation, without branching
-        while (k >= 0)
-        {
-            // This is equivalent to:
-            //
-            // if ((b & (1 << k)) > 0)
-            //    c = (((c*c) % n) * a) % n;
-            // else
-            //    c = ((c*c) % n);
-            c = (((c*c) % n) + (((c*c) % n) * ((a-1) * (b & (1 << k)) >> k)) % n) % n;
-            k--;
-        }
+		// Fast exponentiation, without branching
+		while (k >= 0)
+		{
+			// This is equivalent to:
+			//
+			// if ((b & (1 << k)) > 0)
+			//    c = (((c*c) % n) * a) % n;
+			// else
+			//    c = ((c*c) % n);
+			c = (((c*c) % n) + (((c*c) % n) * ((a-1) * (b & (1 << k)) >> k)) % n) % n;
+			k--;
+		}
 
-        return c;
-    }
-    // end McClure driving
-	
+		return c;
+	}
+	// end McClure driving
+
 	/**
 	 * Grabs the first chunk of chars from the source file to kick off several types
 	 * of string matching algorithms
@@ -101,34 +102,34 @@ public class strMatch {
 		}
 		return scope;
 	}
-	
+
 	protected static String getNextChunkCountBytes(int chunkCount, byte[] source, int leftPoint)
 	{
 		assert(chunkCount > 0);
 		assert(leftPoint >= 0 && leftPoint < source.length);
-		
+
 		StringBuilder scope = new StringBuilder();
 		// assigns endPoint to leftPoint + chunkCount, unless it goes beyond the size
 		// of the source array
 		int endPoint = ((leftPoint + chunkCount) < source.length) ?
-						(leftPoint + chunkCount) : source.length;
-		for (int i = leftPoint; i < endPoint; i++) {
-			byte currentByte = source[i];
-			// Windows uses two characters to represent a text 
-			// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-			// itself, so convert 0x0D to 0x0A, and absorb
-			// trailing 0x0A if this is a windows newline encoding
-			//
-			if (currentByte == 0x0D) {
-				scope.append((char) 0x0A);
-			} else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
-				// Absorb this iteration...
-			} else {
-				scope.append((char) currentByte);
-			}
-			prevByte = currentByte;
-		}
-		return scope.toString();
+				(leftPoint + chunkCount) : source.length;
+				for (int i = leftPoint; i < endPoint; i++) {
+					byte currentByte = source[i];
+					// Windows uses two characters to represent a text 
+					// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+					// itself, so convert 0x0D to 0x0A, and absorb
+					// trailing 0x0A if this is a windows newline encoding
+					//
+					if (currentByte == 0x0D) {
+						scope.append((char) 0x0A);
+					} else if ((prevByte == 0x0D) && (currentByte == 0x0A)) {
+						// Absorb this iteration...
+					} else {
+						scope.append((char) currentByte);
+					}
+					prevByte = currentByte;
+				}
+				return scope.toString();
 	}
 
 	/**
@@ -235,7 +236,7 @@ public class strMatch {
 		}
 		return patternFound;
 	}
-	
+
 	/**
 	 * Simple Rabin-Karp pattern matching using summation algorithm.  Since
 	 * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -257,7 +258,7 @@ public class strMatch {
 		// Generate the hash value for the pattern
 		for (int i = 0; i < pattern.length(); i++) {
 			byte b = (byte)pattern.charAt(i);
-			
+
 			if (USE_SUM) {
 				patHash += (long)b & 0xff;
 			} else {
@@ -273,13 +274,13 @@ public class strMatch {
 			System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
 		}
 
-		
+
 		if (USE_SUM) {
 			// Generate the hash value for the scope
 			// Sum hashing algorithm
 			for (int i = 0; i < scope.length(); i++) {
 				byte b = (byte)scope.charAt(i);
-	
+
 				srcHash += (long)b & 0xff;
 				assert((long)b >= 0);
 			}
@@ -287,18 +288,18 @@ public class strMatch {
 			// Generate the hash value for the scope
 			// Base hashing algorithm
 			int i = 0;
-	        while (i < scope.length()) {
-	            byte b = (byte)scope.charAt(i);
-	            
-	            // We are adding a new character, chop off the old one and append a new one
-	            srcHash = (srcHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+			while (i < scope.length()) {
+				byte b = (byte)scope.charAt(i);
 
-	            if (TESTING) {
-		            System.out.println("i=" + i + " substring=" + scope);
-		            System.out.println("mhash=" + srcHash);
-	            }
-	            i++;
-	        }
+				// We are adding a new character, chop off the old one and append a new one
+				srcHash = (srcHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+
+				if (TESTING) {
+					System.out.println("i=" + i + " substring=" + scope);
+					System.out.println("mhash=" + srcHash);
+				}
+				i++;
+			}
 		}
 
 		if (TESTING) {
@@ -347,11 +348,11 @@ public class strMatch {
 						assert(scope.length() == pattern.length());
 						srcHash += (long)0x0A;
 					} else {
-		                srcHash = srcHash - (((byte)scope.charAt(0) & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-		                if (srcHash < 0) srcHash = 28657 + srcHash;
-		                srcHash = (srcHash*256) % 28657;
-		                srcHash = (srcHash + 0x0A) % 28657;
-		                scope = scope.substring(1) + (char)0x0A;
+						srcHash = srcHash - (((byte)scope.charAt(0) & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+						if (srcHash < 0) srcHash = 28657 + srcHash;
+						srcHash = (srcHash*256) % 28657;
+						srcHash = (srcHash + 0x0A) % 28657;
+						scope = scope.substring(1) + (char)0x0A;
 					}
 				} else if ((prevByte == 0x0D) && (b == 0x0A)) {
 					// We skip this byte and compare against a non-modified scope
@@ -366,22 +367,22 @@ public class strMatch {
 						// Generate the hash value for the scope
 						// Base hashing algorithm
 
-			            // We are adding a new character, chop off the old one and append a new one
-		                srcHash = srcHash - (((byte)scope.charAt(0) & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-		                if (srcHash < 0) srcHash = 28657 + srcHash;
-		                srcHash = (srcHash*256) % 28657;
-		                srcHash = (srcHash + ((byte)readByte & 0xFF)) % 28657;
-		                scope = scope.substring(1) + (char)(readByte & 0xFF);
+						// We are adding a new character, chop off the old one and append a new one
+						srcHash = srcHash - (((byte)scope.charAt(0) & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+						if (srcHash < 0) srcHash = 28657 + srcHash;
+						srcHash = (srcHash*256) % 28657;
+						srcHash = (srcHash + ((byte)readByte & 0xFF)) % 28657;
+						scope = scope.substring(1) + (char)(readByte & 0xFF);
 
-		                assert(srcHash >= 0);
-		                assert(scope.length() == pattern.length());
-		                
-			            if (TESTING) {
-				            System.out.println("substring=" + scope);
-				            System.out.println("mhash=" + srcHash);
-			            }
-				        
-				        prevByte = readByte;
+						assert(srcHash >= 0);
+						assert(scope.length() == pattern.length());
+
+						if (TESTING) {
+							System.out.println("substring=" + scope);
+							System.out.println("mhash=" + srcHash);
+						}
+
+						prevByte = readByte;
 
 					}
 				}
@@ -437,25 +438,25 @@ public class strMatch {
 			// Using sum hashing algorithm
 			for (int i = 0; i < scope.length(); i++) {
 				byte b = (byte)scope.charAt(i);
-	
+
 				srcHash += (long)b & 0xff;
 				assert((long)b >= 0);
 			}
 		} else {
 			// Using base hashing algorithm
 			int i = 0;
-	        while (i < scope.length()) {
-	            char b = scope.charAt(i);
-	            
-	            // We are adding a new character, chop off the old one and append a new one
-                srcHash = (srcHash + (b * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+			while (i < scope.length()) {
+				char b = scope.charAt(i);
 
-                if (TESTING) {
-		            System.out.println("i=" + i + " substring=" + scope);
-		            System.out.println("mhash=" + srcHash);
-	            }
-	            i++;
-	        }
+				// We are adding a new character, chop off the old one and append a new one
+				srcHash = (srcHash + (b * fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+
+				if (TESTING) {
+					System.out.println("i=" + i + " substring=" + scope);
+					System.out.println("mhash=" + srcHash);
+				}
+				i++;
+			}
 		}
 
 		if (TESTING) {
@@ -489,7 +490,7 @@ public class strMatch {
 				assert(temp.length() == 1);
 				byte readByte = (byte) temp.charAt(0);
 				byte b = readByte;
-	
+
 				if (USE_SUM) {
 					srcHash -= (long)scope.charAt(0) & 0xff;
 					scope = scope.substring(1) + (char)b;
@@ -500,22 +501,22 @@ public class strMatch {
 					// Generate the hash value for the scope
 					// Base hashing algorithm
 					byte currentB = (byte)scope.charAt(0);
-					
-	                srcHash = srcHash - (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
-	                if (srcHash < 0) srcHash = 28657 + srcHash;
-	                srcHash = (srcHash*256) % 28657;
-	                srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
-	                scope = scope.substring(1) + (char)(currentB & 0xFF);
 
-	                if (TESTING) {
-			            System.out.println("mhash=" + srcHash);
-		            }
+					srcHash = srcHash - (((byte)currentB & 0xFF)*fastExp(256, pattern.length() - 1, 28657) % 28657);
+					if (srcHash < 0) srcHash = 28657 + srcHash;
+					srcHash = (srcHash*256) % 28657;
+					srcHash = (srcHash + ((byte)currentB & 0xFF)) % 28657;
+					scope = scope.substring(1) + (char)(currentB & 0xFF);
+
+					if (TESTING) {
+						System.out.println("mhash=" + srcHash);
+					}
 				}
 			}
 		}
 		return patternFound;
 	}
-	
+
 	/**
 	 * 
 	 * @param pattern
@@ -859,252 +860,270 @@ public class strMatch {
 		}
 		return patternFound;
 	}
-	
-	protected static void experimentWrapper(String searchAlgorithm, String patternFileName, String sourceFileName) {
-		
+
+	protected static void experimentWrapper(Hashtable<String, Integer> algorithms, String searchAlgorithm, String patternFileName, String sourceFileName) {
 		try {
 			FileInputStream pinput = new FileInputStream(patternFileName);
 			DataInputStream p = new DataInputStream(pinput);
 			FileInputStream sinput = new FileInputStream(sourceFileName);
 			DataInputStream s = new DataInputStream(sinput);
 			
-		} catch (FileNotFoundException ex) {
-			// TODO Auto-generated catch block
-			System.out.println("There was an error opening the file " + ex);
-			ex.printStackTrace();
-		} catch (IOException r) {
-			// TODO Auto-generated catch block
-			System.out.println("IO Exception occurred while accessing f.");
-			r.printStackTrace();
-		}
-		
-	}
-
-	protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
-	{
-		boolean patternEofFound = false;
-
-		// Get file set up
-		try {
-			FileInputStream pinput = new FileInputStream(patternFileName);
-			DataInputStream p = new DataInputStream(pinput);
-			FileInputStream sinput = new FileInputStream(sourceFileName);
-			DataInputStream s = new DataInputStream(sinput);
-			FileOutputStream outFile = new FileOutputStream(outputFileName);
-
+			boolean patternEofFound = false;
+			
 			// Outer loop over all patterns in the pattern file
 			while (!patternEofFound) {
-				boolean sourceEofFound = false;
-				int     patternAmpCount = 0;
-				String  strPattern = new String("");
-				StringBuilder strTmp = new StringBuilder("");
-
-				// Reset our prevByte for our stream parser
-				prevByte = 0x00;
-
-				// Read in the pattern from the pattern file.  Per the 
-				// assignment documentation, the pattern is surrounded by
-				// '&'
-				while ((patternAmpCount < 2) && (patternEofFound == false)) {
-					try {
-						byte b = p.readByte();
-
-						if (b == '&') {
-							patternAmpCount++;
-						} else if (patternAmpCount > 0) {
-							// Windows uses two characters to represent a text 
-							// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
-							// itself, so convert 0x0D to 0x0A, and absorb
-							// trailing 0x0A if this is a windows newline encoding
-							//
-							if (b == 0x0D) { 
-								strTmp.append((char)0x0A);
-							} else if ((prevByte == 0x0D) && (b == 0x0A)) {
-								// We skip this byte and compare against a non-modified scope
-							} else { 
-								strTmp.append((char)b);
-							}
-						}
-
-						prevByte = b;
-
-					} catch (EOFException fu) {
-						patternEofFound = true;
-					}
-				}
-
-				// Now we have the pattern, so store it in the strPattern
-				strPattern = strTmp.toString();
-
-				if (strPattern.length() > 0) { // do nothing if the string is empty
-					if (TESTING) {
-						System.out.println("***************************************");
-						System.out.println("* Search for '" + strPattern + "'");
-						System.out.println("***************************************");
-					}
-
-					sinput = new FileInputStream(sourceFileName);
-					s = new DataInputStream(sinput); 
-
-					// Setup output
-					String output = "";
-
-					// Brute Force String Matching algorithm
-					if (bruteForceMatch(strPattern, s))
-						output = "BF MATCHED: " + strPattern;
-					else
-						output = "BF FAILED: " + strPattern;
-					if (TESTING) System.out.println(output);
-					outFile.write((output + "\n").getBytes());
-
-					s.close();
-					sinput.close();
-
-					if (TESTING) {
-						File f = new File(sourceFileName);
-						sinput = new FileInputStream(f);
-						
-						long offset = 0;
-						long size = f.length();
-						long chunkSize = 1000000; // Best...
-						long overlapSize = strPattern.length() - 1;
-						
-						// Open a channel
-						FileChannel fc = sinput.getChannel();
-						
-						MappedByteBuffer byteBuffer =
-							fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
-						
-						boolean patternFound = false;
-						
-						while ((patternFound == false) && (offset < size)) {
-							byteBuffer.clear();
-							byte[] bytes = new byte[(int)chunkSize];
-							byteBuffer.get(bytes, 0, bytes.length);
-							
-							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
-							s = new DataInputStream(bstream);
-							
-							// Rabin-Karp algorithm using rolling sum
-							if (rabinKarpMatch(strPattern, s, true)) {
-								patternFound = true;
-								break;
-							}
-
-							if (TESTING) System.out.println(output);
-							outFile.write((output + "\n").getBytes());
-							
-							offset += chunkSize - overlapSize;
-						}
-
-						if (patternFound)
-							output = "RK MATCHED: " + strPattern;
-						else
-							output = "RK FAILED: " + strPattern;
-						
-						fc.close();
-						sinput.close();
-					} else {
-						File f = new File(sourceFileName);
-						sinput = new FileInputStream(f);
-						
-						long offset = 0;
-						long size = f.length();
-						long chunkSize = 1000000; // Best...
-						long overlapSize = strPattern.length() - 1;
-						
-						// Open a channel
-						FileChannel fc = sinput.getChannel();
-						
-						MappedByteBuffer byteBuffer =
-							fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
-						
-						boolean patternFound = false;
-						
-						System.out.println("I AM RUNNING");
-						while ((patternFound == false) && (offset < size)) {
-							byteBuffer.clear();
-							byte[] bytes = new byte[(int)chunkSize];
-							byteBuffer.get(bytes, 0, bytes.length);
-							
-							ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
-							s = new DataInputStream(bstream);
-							
-							// Rabin-Karp algorithm using rolling sum
-							if (rabinKarpMatch(strPattern, s, false)) {
-								patternFound = true;
-								break;
-							}
-							
-							if (TESTING) System.out.println(output);
-							outFile.write((output + "\n").getBytes());
-							
-							offset += chunkSize - overlapSize;
-						}
-	
-						if (patternFound)
-							output = "RK MATCHED: " + strPattern;
-						else
-							output = "RK FAILED: " + strPattern;
-
-						fc.close();
-						sinput.close();
-					}
 				
-					sinput = new FileInputStream(sourceFileName);
-					s = new DataInputStream(sinput); 
+			}
 
-					// Knuth-Morris-Pratt algorithm
-					if (kmpMatch(strPattern, s))
-						output = "KMP MATCHED: " + strPattern;
-					else
-						output = "KMP FAILED: " + strPattern;
-					if (TESTING) System.out.println(output);
-					outFile.write((output + "\n").getBytes());
+			} catch (FileNotFoundException ex) {
+				// TODO Auto-generated catch block
+				System.out.println("There was an error opening the file " + ex);
+				ex.printStackTrace();
+			} catch (IOException r) {
+				// TODO Auto-generated catch block
+				System.out.println("IO Exception occurred while accessing f.");
+				r.printStackTrace();
+			}
 
-					s.close();
-					sinput.close();
-
-					sinput = new FileInputStream(sourceFileName);
-					s = new DataInputStream(sinput); 
-
-					// Boyer-Moore algorithm
-					if (bmooreMatch(strPattern, s))
-						output = "BM MATCHED: " + strPattern;
-					else
-						output = "BM FAILED: " + strPattern;
-					if (TESTING) System.out.println(output);
-					outFile.write((output + "\n").getBytes());
-
-					s.close();
-					sinput.close();
-				}
-			} // LOOP to next pattern
-
-			// close output file
-			outFile.flush();
-			outFile.close();
-
-		} catch (FileNotFoundException ex) {
-			// TODO Auto-generated catch block
-			System.out.println("There was an error opening the file " + ex);
-			ex.printStackTrace();
-		} catch (IOException r) {
-			// TODO Auto-generated catch block
-			System.out.println("IO Exception occurred while accessing f.");
-			r.printStackTrace();
 		}
 
-	}
+		protected static void runExperiments(String patternFileName, String sourceFileName, String outputFileName)
+		{
+			// Adding hash table to store algorithm names and assign them switch values
+			// This whole thing should be refactored later
+			Hashtable<String, Integer> algorithms = new Hashtable<String, Integer>();
+			algorithms.put("bruteForceMatch", 0);
+			algorithms.put("bruteForceMatch_byteArray", 1);
+			algorithms.put("rabinKarpMatch", 2);
+			algorithms.put("rabinKarpMatch_byteArray", 3);
+			algorithms.put("kmpMatch", 4);
+			algorithms.put("kmpMatch_byteArray", 5);
+			algorithms.put("bmooreMatch", 6);
+			algorithms.put("bmooreMatch_byteArray", 7);
 
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args)
-	{
-		String patternFileName = args[0];
-		String sourceFileName = args[1];
-		String outputFileName = args[2];
-		runExperiments(patternFileName, sourceFileName, outputFileName);
+			boolean patternEofFound = false;
+
+			// Get file set up
+			try {
+				FileInputStream pinput = new FileInputStream(patternFileName);
+				DataInputStream p = new DataInputStream(pinput);
+				FileInputStream sinput = new FileInputStream(sourceFileName);
+				DataInputStream s = new DataInputStream(sinput);
+				FileOutputStream outFile = new FileOutputStream(outputFileName);
+
+				// Outer loop over all patterns in the pattern file
+				while (!patternEofFound) {
+					boolean sourceEofFound = false;
+					int     patternAmpCount = 0;
+					String  strPattern = new String("");
+					StringBuilder strTmp = new StringBuilder("");
+
+					// Reset our prevByte for our stream parser
+					prevByte = 0x00;
+
+					// Read in the pattern from the pattern file.  Per the 
+					// assignment documentation, the pattern is surrounded by
+					// '&'
+					while ((patternAmpCount < 2) && (patternEofFound == false)) {
+						try {
+							byte b = p.readByte();
+
+							if (b == '&') {
+								patternAmpCount++;
+							} else if (patternAmpCount > 0) {
+								// Windows uses two characters to represent a text 
+								// newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
+								// itself, so convert 0x0D to 0x0A, and absorb
+								// trailing 0x0A if this is a windows newline encoding
+								//
+								if (b == 0x0D) { 
+									strTmp.append((char)0x0A);
+								} else if ((prevByte == 0x0D) && (b == 0x0A)) {
+									// We skip this byte and compare against a non-modified scope
+								} else { 
+									strTmp.append((char)b);
+								}
+							}
+
+							prevByte = b;
+
+						} catch (EOFException fu) {
+							patternEofFound = true;
+						}
+					}
+
+					// Now we have the pattern, so store it in the strPattern
+					strPattern = strTmp.toString();
+
+					if (strPattern.length() > 0) { // do nothing if the string is empty
+						if (TESTING) {
+							System.out.println("***************************************");
+							System.out.println("* Search for '" + strPattern + "'");
+							System.out.println("***************************************");
+						}
+
+						sinput = new FileInputStream(sourceFileName);
+						s = new DataInputStream(sinput); 
+
+						// Setup output
+						String output = "";
+
+						// Brute Force String Matching algorithm
+						if (bruteForceMatch(strPattern, s))
+							output = "BF MATCHED: " + strPattern;
+						else
+							output = "BF FAILED: " + strPattern;
+						if (TESTING) System.out.println(output);
+						outFile.write((output + "\n").getBytes());
+
+						s.close();
+						sinput.close();
+
+						if (TESTING) {
+							File f = new File(sourceFileName);
+							sinput = new FileInputStream(f);
+
+							long offset = 0;
+							long size = f.length();
+							long chunkSize = 1000000; // Best...
+							long overlapSize = strPattern.length() - 1;
+
+							// Open a channel
+							FileChannel fc = sinput.getChannel();
+
+							MappedByteBuffer byteBuffer =
+									fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+
+							boolean patternFound = false;
+
+							while ((patternFound == false) && (offset < size)) {
+								byteBuffer.clear();
+								byte[] bytes = new byte[(int)chunkSize];
+								byteBuffer.get(bytes, 0, bytes.length);
+
+								ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
+								s = new DataInputStream(bstream);
+
+								// Rabin-Karp algorithm using rolling sum
+								if (rabinKarpMatch(strPattern, s, true)) {
+									patternFound = true;
+									break;
+								}
+
+								if (TESTING) System.out.println(output);
+								outFile.write((output + "\n").getBytes());
+
+								offset += chunkSize - overlapSize;
+							}
+
+							if (patternFound)
+								output = "RK MATCHED: " + strPattern;
+							else
+								output = "RK FAILED: " + strPattern;
+
+							fc.close();
+							sinput.close();
+						} else {
+							File f = new File(sourceFileName);
+							sinput = new FileInputStream(f);
+
+							long offset = 0;
+							long size = f.length();
+							long chunkSize = 1000000; // Best...
+							long overlapSize = strPattern.length() - 1;
+
+							// Open a channel
+							FileChannel fc = sinput.getChannel();
+
+							MappedByteBuffer byteBuffer =
+									fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+
+							boolean patternFound = false;
+
+							System.out.println("I AM RUNNING");
+							while ((patternFound == false) && (offset < size)) {
+								byteBuffer.clear();
+								byte[] bytes = new byte[(int)chunkSize];
+								byteBuffer.get(bytes, 0, bytes.length);
+
+								ByteArrayInputStream bstream = new ByteArrayInputStream(bytes);
+								s = new DataInputStream(bstream);
+
+								// Rabin-Karp algorithm using rolling sum
+								if (rabinKarpMatch(strPattern, s, false)) {
+									patternFound = true;
+									break;
+								}
+
+								if (TESTING) System.out.println(output);
+								outFile.write((output + "\n").getBytes());
+
+								offset += chunkSize - overlapSize;
+							}
+
+							if (patternFound)
+								output = "RK MATCHED: " + strPattern;
+							else
+								output = "RK FAILED: " + strPattern;
+
+							fc.close();
+							sinput.close();
+						}
+
+						sinput = new FileInputStream(sourceFileName);
+						s = new DataInputStream(sinput); 
+
+						// Knuth-Morris-Pratt algorithm
+						if (kmpMatch(strPattern, s))
+							output = "KMP MATCHED: " + strPattern;
+						else
+							output = "KMP FAILED: " + strPattern;
+						if (TESTING) System.out.println(output);
+						outFile.write((output + "\n").getBytes());
+
+						s.close();
+						sinput.close();
+
+						sinput = new FileInputStream(sourceFileName);
+						s = new DataInputStream(sinput); 
+
+						// Boyer-Moore algorithm
+						if (bmooreMatch(strPattern, s))
+							output = "BM MATCHED: " + strPattern;
+						else
+							output = "BM FAILED: " + strPattern;
+						if (TESTING) System.out.println(output);
+						outFile.write((output + "\n").getBytes());
+
+						s.close();
+						sinput.close();
+					}
+				} // LOOP to next pattern
+
+				// close output file
+				outFile.flush();
+				outFile.close();
+
+			} catch (FileNotFoundException ex) {
+				// TODO Auto-generated catch block
+				System.out.println("There was an error opening the file " + ex);
+				ex.printStackTrace();
+			} catch (IOException r) {
+				// TODO Auto-generated catch block
+				System.out.println("IO Exception occurred while accessing f.");
+				r.printStackTrace();
+			}
+
+		}
+
+		/**
+		 * @param args
+		 */
+		public static void main(String[] args)
+		{
+			String patternFileName = args[0];
+			String sourceFileName = args[1];
+			String outputFileName = args[2];
+			runExperiments(patternFileName, sourceFileName, outputFileName);
+		}
 	}
-}
