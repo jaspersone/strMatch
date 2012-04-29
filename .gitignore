@@ -1,6 +1,3 @@
-.classpath
-.project
-.settings/
 .DS_Store
 *.class
 sampleSource.txt
