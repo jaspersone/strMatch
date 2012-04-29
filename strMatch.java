@@ -550,7 +550,7 @@ public class strMatch {
         boolean         patternFound    = false;
         long            srcHash         = 0;
         long            patHash         = 0;
-        long            prime           = 28657;
+        long            prime           = 4611686018427387847L;
         RingByteBuffer  byteRing;
 
         if (pattern.length() > source.length)
@@ -1210,20 +1210,18 @@ public class strMatch {
         try {
             File f = new File(sourceFileName);
             FileInputStream sinput = new FileInputStream(f);
-
+          
             long offset = 0;
             long size = f.length();
             int  chunkSize = 1000000; // Best...
-            int  overlapSize = pattern.length(); // testing with full pattern length
-            // long overlapSize = pattern.length() - 1;
+            int  overlapSize = pattern.length() - 1; // testing with full pattern length
 
-            //System.out.println("f=" + f + " size=" + size);
-            
-            // Open a channel
-            FileChannel fc = sinput.getChannel();
-
-            MappedByteBuffer byteBuffer =
-                    fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
+            //
+            // XXX-Disabled until we can figure out what is wrong with filechannel
+            //
+            //FileChannel fc = sinput.getChannel();
+            //MappedByteBuffer byteBuffer =
+            //        fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
             
             byte[] prevBuffer = null;
             
@@ -1235,7 +1233,7 @@ public class strMatch {
                 if (TESTING) System.out.println("I AM RUNNING");
 
                 // Initialize a new read
-                byteBuffer.clear();
+                //byteBuffer.clear();
                 byte[] bytes = new byte[(int)chunkSize];
 
                 // Copy over the overlap from the previous read pass
@@ -1246,19 +1244,19 @@ public class strMatch {
                     bytesOffset = overlapSize;
                 }
                 
-//                if ((size-offset)+bytesOffset > chunkSize)
-//                    // chunkSize == chunkSize - bytesOffset
-//                else {
-//                    chunkSize = (size - offset);
-//                }
+                // Read from the input stream the amount of non-overlapping bytes
+                sinput.read(bytes, bytesOffset, 
+                      (int)(Math.min(size - offset, chunkSize - bytesOffset)));
 
                 // byteBuffer.get will get the next bytes in read sequence for
                 // the file channel.  Rewinding for overlap is not possible.
-                byteBuffer.get(bytes, bytesOffset, 
-                               (int)(Math.min(size - offset, chunkSize - bytesOffset)));
+              
+                //
+                // XXX-Disabled until we can figure out what is wrong with filechannel
+                //
+                //byteBuffer.get(bytes, bytesOffset, 
+                //               (int)(Math.min(size - offset, chunkSize - bytesOffset)));
                 
-                //System.out.println("bytes=" + Arrays.toString(bytes));
-
                 // Search for the given buffer.
                 patternFound = algorithm.search(pattern, bytes);
 
@@ -1269,7 +1267,7 @@ public class strMatch {
                 prevBuffer = bytes;
             }
             // close files
-            fc.close();
+            //fc.close();
             sinput.close();
         } catch (FileNotFoundException ex) {
             // TODO Auto-generated catch block
@@ -1280,6 +1278,7 @@ public class strMatch {
             System.out.println("IO Exception occurred while accessing f.");
             r.printStackTrace();
         }
+      
         return patternFound;
     }
 
