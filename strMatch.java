@@ -1213,26 +1213,60 @@ public class strMatch {
 
             long offset = 0;
             long size = f.length();
-            long chunkSize = 1000000; // Best...
-            long overlapSize = pattern.length(); // testing with full pattern length
+            int  chunkSize = 1000000; // Best...
+            int  overlapSize = pattern.length(); // testing with full pattern length
             // long overlapSize = pattern.length() - 1;
 
+            //System.out.println("f=" + f + " size=" + size);
+            
             // Open a channel
             FileChannel fc = sinput.getChannel();
 
             MappedByteBuffer byteBuffer =
                     fc.map(FileChannel.MapMode.READ_ONLY, 0, size);
             
+            byte[] prevBuffer = null;
+            
             // feed byte buffers to search algorithm and search
             // for matching pattern
             while ((!patternFound) && (offset < size)) {
+                int bytesOffset = 0;
+                
                 if (TESTING) System.out.println("I AM RUNNING");
+
+                // Initialize a new read
                 byteBuffer.clear();
                 byte[] bytes = new byte[(int)chunkSize];
-                byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
+
+                // Copy over the overlap from the previous read pass
+                if (prevBuffer != null) {
+                    for (int i = 0; i < overlapSize; i++)
+                        bytes[i] = prevBuffer[chunkSize-overlapSize+i];
+                    
+                    bytesOffset = overlapSize;
+                }
+                
+//                if ((size-offset)+bytesOffset > chunkSize)
+//                    // chunkSize == chunkSize - bytesOffset
+//                else {
+//                    chunkSize = (size - offset);
+//                }
+
+                // byteBuffer.get will get the next bytes in read sequence for
+                // the file channel.  Rewinding for overlap is not possible.
+                byteBuffer.get(bytes, bytesOffset, 
+                               (int)(Math.min(size - offset, chunkSize - bytesOffset)));
+                
+                //System.out.println("bytes=" + Arrays.toString(bytes));
+
+                // Search for the given buffer.
                 patternFound = algorithm.search(pattern, bytes);
+
                 if (patternFound) break;
-                offset += chunkSize - overlapSize;
+                
+                // Adjust the offset and remember this read pass
+                offset += chunkSize - bytesOffset;
+                prevBuffer = bytes;
             }
             // close files
             fc.close();
