@@ -2,3 +2,15 @@ BF FAILED: The search string lies here
 RK FAILED: The search string lies here
 KMP FAILED: The search string lies here
 BM FAILED: The search string lies here
+BF FAILED: Can you find this?
+RK FAILED: Can you find this?
+KMP FAILED: Can you find this?
+BM FAILED: Can you find this?
+BF FAILED: Tracking me down is 
+not that easy
+RK FAILED: Tracking me down is 
+not that easy
+KMP FAILED: Tracking me down is 
+not that easy
+BM FAILED: Tracking me down is 
+not that easy

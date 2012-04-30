@@ -1076,7 +1076,7 @@ public class strMatch {
         // p = pattern
         // Q1: Every occurrence of p in t that begins before index l 
         //     has been previously found.
-        // Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
+        // Q2: 0^2 j^2 chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
         while ((!patternFound) && (nextCharIndex <= source.length)) {
             int j;
             for (j = chunkCount; j > 0; j--) {
@@ -1154,7 +1154,7 @@ public class strMatch {
         // p = pattern
         // Q1: Every occurrence of p in t that begins before index l 
         //     has been previously found.
-        // Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
+        // Q2: 0^2 j^2 chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
 
         while (!patternFound) {
             int j;
