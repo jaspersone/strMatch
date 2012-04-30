@@ -1,7 +1,7 @@
 /*
  *  Student information for assignment:
  *  Matthew McClure: Slip days used for this project: 0  Slip days used (total): 0
- *  Jasper Sone: Slip days used for this project: 0  Slip days used (total): 0
+ *  Jasper Sone: Slip days used for this project: 0  Slip days used (total): 1
  */
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -26,6 +26,7 @@ public class strMatch {
     // the previous chunk, for the 0x0D,0x0A Windows newline pattern.
     static byte prevByte = 0x00;
 
+    // begin McClure driving
     // Helper class for a rotating ring buffer.
     public static class RingByteBuffer {
         // Local data store for the Ring Buffer
@@ -112,7 +113,6 @@ public class strMatch {
         }
     }
     
-    // begin McClure driving
     /**
      * Helper function for fast exponentiation
      * 
@@ -155,6 +155,7 @@ public class strMatch {
     }
     // end McClure driving
 
+    // begin Sone driving
     /**
      * Grabs the first chunk of chars from the source file to kick off several types
      * of string matching algorithms
@@ -258,7 +259,8 @@ public class strMatch {
         
         return Math.max(endPoint - leftPoint, 0);
     }
-
+    // end Sone driving
+    
     /**
      * Brute force pattern matching algorithm.  Checks each source byte as 
      * the leftmost comparison with the pattern.
@@ -1134,9 +1136,9 @@ public class strMatch {
 
             // Outer loop over all patterns in the pattern file
             while (!patternEofFound) {
-                int             patternAmpCount = 0;
+                int               patternAmpCount = 0;
                 String            strPattern         = new String("");
-                String            rawPattern        = new String("");
+                String            rawPattern         = new String("");
                 StringBuilder     rawTmp             = new StringBuilder("");
                 StringBuilder     strTmp             = new StringBuilder("");
 
