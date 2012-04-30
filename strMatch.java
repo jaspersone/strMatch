@@ -259,7 +259,6 @@ public class strMatch {
         
         return Math.max(endPoint - leftPoint, 0);
     }
-    // end Sone driving
     
     /**
      * Brute force pattern matching algorithm.  Checks each source byte as 
@@ -350,7 +349,7 @@ public class strMatch {
         else         basePatternHashes.put(pattern, patHash);
         return patHash;
     }
-
+    
     /**
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -438,7 +437,9 @@ public class strMatch {
         }
         return patternFound;
     }
+    // end Sone driving
 
+    // begin McClure driving
     /**
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -547,56 +548,9 @@ public class strMatch {
         }
         return patternFound;
     }
-    
-    /**
-     * 
-     * @param pattern
-     * @return
-     */
-    protected static String[] getKMPSubStrings(String pattern)
-    {
-        String[] substrings = new String[pattern.length() + 1];
-        // build array of strings that contain substrings
-        for (int i = 0; i <= pattern.length(); i++) {
-            substrings[i] = pattern.substring(0, i);
-        }
-        return substrings;
-    }
+    // end McClure driving
 
-    /**
-     * Given a string s, returns the longest core it can find (This is just for testing)
-     * @param s - string to search for a core within
-     * @return a substring of the search string s, of which is the longest pre/suffix
-     */
-    protected static String getCoreTest(String s, String[] substrings)
-    {
-        String core = "";
-        for (int i = 1; i < s.length(); i++) {
-            String tempCore = s.substring(0, i);
-            String tempS = s.substring(s.length() - i);
-            if (tempCore.equals(tempS) && tempS.length() != s.length()) {
-                core = tempCore;
-            }
-        }
-        return core;
-    }
-
-    /**
-     * Builds a table which contains a list of numbers which correspond to
-     * the length of the max core size of each substring of pattern
-     * @param pattern - the string to build the core table from
-     * @return an array of integers which indicate the length of each substring's core
-     */
-    protected static int[] buildCoreTable(String pattern)
-    {
-        String[] substrings = getKMPSubStrings(pattern);
-        int[] table = new int[substrings.length];
-        for (int i = 0; i < substrings.length; i++) {
-            table[i] = getCoreTest(substrings[i], substrings).length();
-        }
-        return table;
-    }
-
+    // begin Sone driving
     /**
      * Iterative core building functionality that is O(3m) time,
      * where m is the length of the pattern.
@@ -699,7 +653,9 @@ public class strMatch {
     // Prevents the regeneration of the core tables, if they have already
     // been created
     static Hashtable<String, int[]> coreTables = new Hashtable<String, int[]>();
-
+    // end Sone driving
+    
+    // begin McClure driving
     /**
      * Iterative core building functionality that is O(3m) time,
      * where m is the length of the pattern.
@@ -758,7 +714,9 @@ public class strMatch {
         coreTables.put(pattern, table);
         return table;
     }
-
+    // end McClure driving
+    
+    // begin Sone driving    
     /**
      * Implements the Knuth-Morris-Pratt algorithm as described
      * in CS337, Eberlein and "Theory in Programming Practice", Misra.
@@ -834,7 +792,9 @@ public class strMatch {
         }
         return patternFound;
     }
+    // end Sone driving
 
+    // begin McClure driving
     /**
      * Implementation of Boyer-Moore pattern matching algorithm
      * as described in CS337, Eberlein and 
@@ -933,7 +893,9 @@ public class strMatch {
         }
         return patternFound;
     }
-
+    // end McClure driving
+    
+    // begin Sone driving    
     /**
      * Experiment Wrapper takes a particular experiment and buffers the input
      * stream to ensure efficient processing of large files. This hides the
@@ -1228,4 +1190,5 @@ public class strMatch {
         String outputFileName = args[2];
         runExperiments(patternFileName, sourceFileName, outputFileName);
     }
+    // end Sone driving
 }
