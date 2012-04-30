@@ -955,7 +955,7 @@ public class strMatch {
             long offset = 0;
             long size = f.length();
             int  overlapSize = pattern.length() - 1; // testing with full pattern length
-            int  chunkSize = Math.max(1000000,(pattern.length() * 10)); // 1000000 is best...
+            int  chunkSize = Math.max(15000000,(pattern.length() * 10)); // 1000000 is best...
 
             //TESTING = true;
             // Open a channel
@@ -1067,7 +1067,7 @@ public class strMatch {
             myPhrase = "RK ";
         }
         public boolean search(String pattern, byte[] source) {
-            return strMatch.rabinKarpMatchBASE(pattern, source);
+            return strMatch.rabinKarpMatchSUM(pattern, source);
         }
         public boolean search(String pattern, byte[] source, boolean USE_SUM) {
             if (USE_SUM)
