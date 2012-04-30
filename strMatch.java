@@ -1223,12 +1223,9 @@ public class strMatch {
 
             long offset = 0;
             long size = f.length();
-            int  chunkSize = 1000000; // Best...
             int  overlapSize = pattern.length(); // testing with full pattern length
-            // long overlapSize = pattern.length() - 1;
+            int  chunkSize = Math.max(1000000,(overlapSize * 10)); // 1000000 is best...
 
-            //System.out.println("f=" + f + " size=" + size);
-            
             // Open a channel
             FileChannel fc = sinput.getChannel();
 
@@ -1256,19 +1253,11 @@ public class strMatch {
                     bytesOffset = overlapSize;
                 }
                 
-//                if ((size-offset)+bytesOffset > chunkSize)
-//                    // chunkSize == chunkSize - bytesOffset
-//                else {
-//                    chunkSize = (size - offset);
-//                }
-
                 // byteBuffer.get will get the next bytes in read sequence for
                 // the file channel.  Rewinding for overlap is not possible.
                 byteBuffer.get(bytes, bytesOffset, 
                                (int)(Math.min(size - offset, chunkSize - bytesOffset)));
                 
-                //System.out.println("bytes=" + Arrays.toString(bytes));
-
                 // Search for the given buffer.
                 patternFound = algorithm.search(pattern, bytes);
 
@@ -1400,9 +1389,11 @@ public class strMatch {
 
             // Outer loop over all patterns in the pattern file
             while (!patternEofFound) {
-                int     patternAmpCount = 0;
-                String  strPattern = new String("");
-                StringBuilder strTmp = new StringBuilder("");
+                int     		patternAmpCount = 0;
+                String			strPattern 		= new String("");
+                String			rawPattern		= new String("");
+				StringBuilder 	rawTmp 			= new StringBuilder("");
+				StringBuilder 	strTmp 			= new StringBuilder("");
 
                 // Reset our prevByte for our stream parser
                 prevByte = 0x00;
@@ -1410,13 +1401,14 @@ public class strMatch {
                 // Read in the pattern from the pattern file.  Per the 
                 // assignment documentation, the pattern is surrounded by
                 // '&'
-                while ((patternAmpCount < 2) && (patternEofFound == false)) {
+                while ((patternAmpCount < 2) && (!patternEofFound)) {
                     try {
                         byte b = p.readByte();
 
                         if (b == '&') {
                             patternAmpCount++;
                         } else if (patternAmpCount > 0) {
+							rawTmp.append((char)b);
                             // Windows uses two characters to represent a text 
                             // newline (Hex 0x0D, 0x0A).  Apple has 0x0D by
                             // itself, so convert 0x0D to 0x0A, and absorb
@@ -1440,9 +1432,9 @@ public class strMatch {
 
                 // Now we have the pattern, so store it in the strPattern
                 strPattern = strTmp.toString();
-
+				rawPattern = rawTmp.toString();
                 if (strPattern.length() > 0) { // only search for strings with chars
-                    if (STATS_ON && strPattern.length() > 0) {
+                    if (STATS_ON) {
                         System.out.println("********************************************");
                         System.out.println("Search for '" + strPattern + "'");
                         System.out.println("********************************************");
@@ -1451,12 +1443,14 @@ public class strMatch {
                     for (strMatch.Match algorithm : matches) {                        
                         // Setup output
                         if (STATS_ON) sw.start();
-                        String output = algorithm.getMyPhrase(experimentWrapper(algorithm, strPattern, sourceFileName)) + strPattern;
+                        String output = algorithm.getMyPhrase(
+											experimentWrapper(algorithm, strPattern, sourceFileName)
+										) + rawPattern + "\n";
                         if (STATS_ON) {
                             sw.stop();
                             System.out.println(algorithm.getMyName() + " time: " + sw.time());                            
                         }
-                        outFile.write((output + "\n").getBytes());
+                        outFile.write((output).getBytes());
                     } // LOOP to next algorithm
                     if (STATS_ON) System.out.print("\n");
                 } // don't search if pattern is length is less than 1
@@ -1475,7 +1469,6 @@ public class strMatch {
             System.out.println("IO Exception occurred while accessing f.");
             r.printStackTrace();
         }
-
     }
 
     /**
