@@ -258,9 +258,6 @@ public class strMatch {
      */
     protected static boolean bruteForceMatch(String pattern, DataInputStream source)
     {
-        if (TESTING) {
-            System.out.println(">>> Brute Force Pattern Match <<<");
-        }
         int     chunkCount = pattern.length();
         boolean patternFound = false;
         String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
@@ -326,14 +323,13 @@ public class strMatch {
      */
     protected static boolean bruteForceMatch(String pattern, byte[] source)
     {
-        if (TESTING) {
-            System.out.println(">>> Brute Force Pattern Match <<<");
-        }
         int             chunkCount      = pattern.length();
         int             nextCharIndex   = chunkCount;
         boolean         patternFound    = false;
         RingByteBuffer  byteRing;
-        
+        if (TESTING) {
+            System.out.println(">>> Brute Force Pattern Match <<<");
+        }
         
         if (pattern.length() > source.length)
             return false;
@@ -392,7 +388,9 @@ public class strMatch {
         for (int i = 0; i < pattern.length(); i++) {
             byte b = (byte)pattern.charAt(i);
 
-            if (USE_SUM) {
+            if (USE_SUM) {        if (TESTING) {
+                System.out.println(">>> Brute Force Pattern Match <<<");
+            }
                 patHash += (long)b & 0xff;
             } else {
                 patHash = (patHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
@@ -642,21 +640,18 @@ public class strMatch {
         long totalCount = 0;
         // go through the source and search for the pattern
         while(!patternFound && nextCharIndex < source.length) {
-            if (TESTING) totalCount++;
+            if (STATS_ON) totalCount++;
             // compare scope so far
             if (srcHash == patHash) {
                 int i = 0;
-                if (TESTING) {
-                    collisionCount++;
-                    System.out.println("Collision found!");
-                }
+                if (TESTING) System.out.println("Collision found!");
+                if (STATS_ON) collisionCount++;
                 // Do a comparison of the actual strings
                 while (i < chunkCount) {
                     if (pattern.charAt(i) != byteRing.get(i))
                         break;
                     i++;
                 }
-
                 if (i >= chunkCount) {
                     if (TESTING) System.out.println("PATTERN FOUND!!! YES!!!");
                     patternFound = true;
@@ -665,6 +660,8 @@ public class strMatch {
             
             if (!patternFound) { // get next scope
                 byte lastByte = byteRing.get(0);
+                // TODO: I think the next call to getNextChunkCountRingByteBuffer
+                //       is causing the loop to become (n - 1) * m
                 getNextChunkCountRingByteBuffer(1, source, nextCharIndex++, byteRing);
                 byte readByte = byteRing.getHead();
                 
@@ -696,7 +693,7 @@ public class strMatch {
                 }
             }
         }
-        if (TESTING) System.out.println(">>> Collisions/Compares = " + collisionCount + "/" + totalCount);
+        if (STATS_ON) System.out.println(">>> RK Collisions/Compares = " + collisionCount + "/" + totalCount);
         return patternFound;
     }
 
