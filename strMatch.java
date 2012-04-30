@@ -534,6 +534,37 @@ public class strMatch {
         return patternFound;
     }
 
+	// Caches pattern hashes of patterns that are reused by experiment wrapper
+	// and prevents rehashing of patterns everytime the buffer has to reload
+	static Hashtable<String, Long> sumPatternHashes = new Hashtable<String, Long>();
+	static Hashtable<String, Long> basePatternHashes = new Hashtable<String, Long>(); 
+
+	protected static long getPatternHash(String pattern, boolean USE_SUM) {
+		if (USE_SUM && sumPatternHashes.containsKey(pattern))
+			return sumPatternHashes.get(pattern);
+		if (!USE_SUM && basePatternHashes.containsKey(pattern))
+			return basePatternHashes.get(pattern);
+		
+		// Generate the hash value for the pattern if not found in cache
+		long patHash = 0;
+		
+		for (int i = 0; i < pattern.length(); i++) {
+			byte b = (byte)pattern.charAt(i);
+
+			if (USE_SUM) {
+				patHash += (long)b & 0xFF;
+			} else {
+				patHash = (patHash + (((byte)b & 0xFF) * 
+							fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+			}
+		}
+		
+		// add pattern hash to cache table to prevent rehashing upon repeat calls
+		if (USE_SUM) sumPatternHashes.put(pattern, patHash);
+		else		 basePatternHashes.put(pattern, patHash);
+		return patHash;
+	}
+
     /**
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -568,17 +599,8 @@ public class strMatch {
         
         // Copy the first chunkCount bytes of source into the ring
         getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
-        
-        // Generate the hash value for the pattern
-        for (int i = 0; i < pattern.length(); i++) {
-            byte b = (byte)pattern.charAt(i);
 
-            if (USE_SUM) {
-                patHash += (long)b & 0xFF;
-            } else {
-                patHash = (patHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
-            }
-        }
+		patHash = getPatternHash(pattern, USE_SUM);
 
         if (TESTING) {
             System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
