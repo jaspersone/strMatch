@@ -196,7 +196,7 @@ public class strMatchTest {
 	@Test
 	public void testBuildCoreTable3_basicPattern1() {
 		String pattern = new String("xabcabxab");
-		int[] testResult = strMatch.buildCoreTable3(pattern.getBytes());
+		int[] testResult = strMatch.buildCoreTable3(pattern);
 		int[] expectedResult = {0, 0, 0, 0, 0, 0, 0, 1, 2, 3};
 		assertEquals(testResult.length, expectedResult.length);
 		for (int i = 0; i < expectedResult.length; i++) {

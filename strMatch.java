@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.Hashtable;
 
 public class strMatch {
     static boolean TESTING = false;
@@ -189,7 +190,7 @@ public class strMatch {
 
     protected static String getNextChunkCountBytes(int chunkCount, byte[] source, int leftPoint)
     {
-        assert(chunkCount > 0);
+        assert(chunkCount > 0);            
         assert(leftPoint >= 0 && leftPoint < source.length);
 
         StringBuilder scope = new StringBuilder();
@@ -359,9 +360,7 @@ public class strMatch {
                 i++;
             }
             if (i == chunkCount) {
-                if (TESTING) {
-                    System.out.println("PATTERN FOUND!!! YES!!!");
-                }
+                if (TESTING) System.out.println("PATTERN FOUND!!! YES!!!");
                 patternFound = true;
             } else { // get the next char
                 getNextChunkCountRingByteBuffer(1, source, nextCharIndex++, byteRing);
@@ -369,8 +368,8 @@ public class strMatch {
         }
         return patternFound;
     }
-
-    /**
+    
+    /**Map
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
      * 2^55 times, and we can assume that this data set is intractable for 
@@ -532,7 +531,41 @@ public class strMatch {
         }
         return patternFound;
     }
+    
+    // Two tables, to hold hash values of Rabin Karp
+    // This prevents the rehashing of the patterns that
+    // have already been requested.
+    static Hashtable<String, Long> rkPatternSumHashes  = new Hashtable<String, Long>();
+    static Hashtable<String, Long> rkPatternBaseHashes = new Hashtable<String, Long>();
 
+    protected static long rkHashPattern(String pattern, boolean USE_SUM) {
+    	long patternHash = 0;
+    	
+    	// hit cached values of pattern hash first to see if they are available
+    	if (USE_SUM && rkPatternSumHashes.containsKey(pattern))
+    	    return rkPatternSumHashes.get(pattern);
+    	if (!USE_SUM && rkPatternBaseHashes.containsKey(pattern))
+    	    return rkPatternBaseHashes.get(pattern);
+    	
+    	// if the pattern is not found in the cache, create it then return
+    	for (int i = 0; i < pattern.length(); i++) {
+            byte b = (byte)pattern.charAt(i);
+
+            if (USE_SUM) {
+                patternHash += (long)b & 0xFF;
+            } else {
+                patternHash = (patternHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
+            }
+        }
+    	assert (patternHash >= 0);
+    	
+    	// add pattern to cache
+    	if (USE_SUM) rkPatternSumHashes.put(pattern, patternHash);
+    	else rkPatternBaseHashes.put(pattern, patternHash);
+    	
+    	return patternHash;
+    }
+    
     /**
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -552,12 +585,10 @@ public class strMatch {
         long            patHash         = 0;
         long            prime           = 28657;
         RingByteBuffer  byteRing;
-
-        if (pattern.length() > source.length)
-            return false;
         
-        if (chunkCount <= 0) 
-            return true; 
+        // Catch early exit conditions
+        if (pattern.length() > source.length) return false;
+        if (chunkCount <= 0) return true; 
         
         // Reset prevByte for our stream parser.
         prevByte = 0x00;
@@ -569,15 +600,7 @@ public class strMatch {
         getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
         
         // Generate the hash value for the pattern
-        for (int i = 0; i < pattern.length(); i++) {
-            byte b = (byte)pattern.charAt(i);
-
-            if (USE_SUM) {
-                patHash += (long)b & 0xFF;
-            } else {
-                patHash = (patHash + (((byte)b & 0xFF)* fastExp(256, pattern.length() - i - 1, 28657) % 28657)) % 28657;
-            }
-        }
+        patHash = rkHashPattern(pattern, USE_SUM);
 
         if (TESTING) {
             System.out.println(">>> Rabin Karp Pattern Match: " +  "patHash = " + Long.toHexString(patHash) + " <<<");
@@ -615,15 +638,18 @@ public class strMatch {
             System.out.println("scope=" +  byteRing);
             System.out.println("Expected srcHash=" + srcHash);
         }
-
-        //prevByte = ;
-
+        long collisionCount = 0;
+        long totalCount = 0;
         // go through the source and search for the pattern
         while(!patternFound && nextCharIndex < source.length) {
+            if (TESTING) totalCount++;
             // compare scope so far
             if (srcHash == patHash) {
                 int i = 0;
-                if (TESTING) System.out.println("Collision found!");
+                if (TESTING) {
+                    collisionCount++;
+                    System.out.println("Collision found!");
+                }
                 // Do a comparison of the actual strings
                 while (i < chunkCount) {
                     if (pattern.charAt(i) != byteRing.get(i))
@@ -637,7 +663,7 @@ public class strMatch {
                 }
             } 
             
-            if (patternFound == false) { // get next scope
+            if (!patternFound) { // get next scope
                 byte lastByte = byteRing.get(0);
                 getNextChunkCountRingByteBuffer(1, source, nextCharIndex++, byteRing);
                 byte readByte = byteRing.getHead();
@@ -670,6 +696,7 @@ public class strMatch {
                 }
             }
         }
+        if (TESTING) System.out.println(">>> Collisions/Compares = " + collisionCount + "/" + totalCount);
         return patternFound;
     }
 
@@ -821,6 +848,9 @@ public class strMatch {
         return b;
     }
 
+    // Prevents the regeneration of the core tables, if they have already been created
+    static Hashtable<String, int[]> coreTables = new Hashtable<String, int[]>();
+
     /**
      * Iterative core building functionality that is O(3m) time,
      * where m is the length of the pattern.
@@ -831,48 +861,54 @@ public class strMatch {
      * @param p Byte array containing our pattern.
      * @return An array representing core table lengths
      */
-    protected static int[] buildCoreTable3(byte[] p)
+    protected static int[] buildCoreTable3(String pattern)
     {
-        // The pattern length is the size of the table, since each core
-        // calculation involves the next symbol in p[i+direction]
-
-        int[] table = new int[p.length+1];
-        int   i = 0;
-        int   coreLength = 0;
-
-        table[0] = 0; // epsilon length value = 0
-        // Start with the first value
-        while (i < p.length) {
-            // If length of v is enough to generate a proper
-            // prefix and suffix, determine if we have a core.
-            if (i > 1) {
-                //
-                // Match ..xa 
-                // if x==a then core is coreLength+1.
-                // else coreLength = 0, since we cannot match
-                //                      a proper prefix and suffix
-                //
-                // This is explicitly for suffix, since index is 
-                // p.length-1-coreLength.  For prefix, you would need
-                // vLength - coreLength..
-                if (p[coreLength] == p[i]) {
-                    table[i+1] = ++coreLength;
+        if (coreTables.containsKey(pattern)) {
+            return coreTables.get(pattern);
+        } else { // create a new core table if it doesn't already exist for the pattern
+            byte[] p = pattern.getBytes();
+            // The pattern length is the size of the table, since each core
+            // calculation involves the next symbol in p[i+direction]
+    
+            int[] table = new int[p.length+1];
+            int   i = 0;
+            int   coreLength = 0;
+    
+            table[0] = 0; // epsilon length value = 0
+            // Start with the first value
+            while (i < p.length) {
+                // If length of v is enough to generate a proper
+                // prefix and suffix, determine if we have a core.
+                if (i > 1) {
+                    //
+                    // Match ..xa 
+                    // if x==a then core is coreLength+1.
+                    // else coreLength = 0, since we cannot match
+                    //                      a proper prefix and suffix
+                    //
+                    // This is explicitly for suffix, since index is 
+                    // p.length-1-coreLength.  For prefix, you would need
+                    // vLength - coreLength..
+                    if (p[coreLength] == p[i]) {
+                        table[i+1] = ++coreLength;
+                    } else {
+                        coreLength = 0;
+                    }
                 } else {
-                    coreLength = 0;
+                    table[i] = 0; // default length of core for sizes <= 1
+                }        
+                if (TESTING) {
+                    String myDumbString = new String("");
+                    for (int k = 0; k <= i; k++)
+                        myDumbString += (char)p[k];
+                    System.out.println("Substring=" + myDumbString + " coreLength=" + coreLength);
                 }
-            } else {
-                table[i] = 0; // default length of core for sizes <= 1
-            }        
-            if (TESTING) {
-                String myDumbString = new String("");
-                for (int k = 0; k <= i; k++)
-                    myDumbString += (char)p[k];
-                System.out.println("Substring=" + myDumbString + " coreLength=" + coreLength);
+                i++;
             }
-            i++;
+            // Add entry to table
+            coreTables.put(pattern, table);
+            return table;
         }
-
-        return table;
     }
 
     /**
@@ -912,7 +948,7 @@ public class strMatch {
         getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
         
         // Build the core table for our algorithm.
-        c = buildCoreTable3(pattern.getBytes());
+        c = buildCoreTable3(pattern);
         
         // note that the left most will always be 0 in our version
         // t = scope
@@ -968,7 +1004,7 @@ public class strMatch {
         int     bytesToGrab = 0;
         boolean patternFound = false;
         String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-        int[]   c = buildCoreTable3(pattern.getBytes());
+        int[]   c = buildCoreTable3(pattern);
 
         // Reset prevByte for our stream parser.
         prevByte = 0x00;
@@ -1066,7 +1102,7 @@ public class strMatch {
         // p = pattern
         // Q1: Every occurrence of p in t that begins before index l 
         //     has been previously found.
-        // Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
+        // Q2: 0ï¿½jï¿½chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
         while ((!patternFound) && (nextCharIndex <= source.length)) {
             int j;
             for (j = chunkCount; j > 0; j--) {
@@ -1144,7 +1180,7 @@ public class strMatch {
         // p = pattern
         // Q1: Every occurrence of p in t that begins before index l 
         //     has been previously found.
-        // Q2: 0²j²chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
+        // Q2: 0ï¿½jï¿½chunkCount,p[j..chunkCount]=t[l+j..l+chunkCount]
 
         while (!patternFound) {
             int j;
@@ -1214,8 +1250,7 @@ public class strMatch {
             long offset = 0;
             long size = f.length();
             long chunkSize = 1000000; // Best...
-            long overlapSize = pattern.length(); // testing with full pattern length
-            // long overlapSize = pattern.length() - 1;
+            long overlapSize = pattern.length() - 1;
 
             // Open a channel
             FileChannel fc = sinput.getChannel();
@@ -1231,6 +1266,7 @@ public class strMatch {
                 byte[] bytes = new byte[(int)chunkSize];
                 byteBuffer.get(bytes, 0, (int)Math.min(size - offset, chunkSize));
                 patternFound = algorithm.search(pattern, bytes);
+                if (TESTING && patternFound) System.out.println("    INSIDE EXPERIMENT WRAPPER: PATTERN FOUND!!!");
                 if (patternFound) break;
                 offset += chunkSize - overlapSize;
             }
@@ -1353,10 +1389,11 @@ public class strMatch {
             FileInputStream pinput = new FileInputStream(patternFileName);
             DataInputStream p = new DataInputStream(pinput);
             FileOutputStream outFile = new FileOutputStream(outputFileName);
-
+            
+            int patternAmpCount;
             // Outer loop over all patterns in the pattern file
             while (!patternEofFound) {
-                int     patternAmpCount = 0;
+                patternAmpCount = 0;
                 String  strPattern = new String("");
                 StringBuilder strTmp = new StringBuilder("");
 
@@ -1366,7 +1403,7 @@ public class strMatch {
                 // Read in the pattern from the pattern file.  Per the 
                 // assignment documentation, the pattern is surrounded by
                 // '&'
-                while ((patternAmpCount < 2) && (patternEofFound == false)) {
+                while ((patternAmpCount < 2) && !patternEofFound) {
                     try {
                         byte b = p.readByte();
 
