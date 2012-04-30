@@ -1,6 +1,6 @@
 BF MATCHED: The search string lies here
 RK MATCHED: The search string lies here
-KMP MATCHED: The search string lies here 
+KMP MATCHED: The search string lies here
 BM MATCHED: The search string lies here
 BF FAILED: Can you find this?
 RK FAILED: Can you find this?
@@ -14,5 +14,3 @@ KMP FAILED: Tracking me down is
 not that easy
 BM FAILED: Tracking me down is
 not that easy
-
-

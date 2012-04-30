@@ -1,4 +1,4 @@
 &The search string lies here&
 &Can you find this?&
-&Tracking me down is 
+&Tracking me down is
 not that easy&
