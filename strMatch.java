@@ -349,6 +349,12 @@ public class strMatch {
         return patHash;
     }
 
+    // Vars to keep track of collisions verses total iterations
+    static int sumCollisions   = 0;
+    static int sumTotal        = 0;
+    static int baseCollisions  = 0;
+    static int baseTotal       = 0;
+
     /**
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -405,8 +411,10 @@ public class strMatch {
 
         // go through the source and search for the pattern
         while(!patternFound && nextCharIndex < source.length) {
+            sumTotal++;
             // compare scope so far
             if (srcHash == patHash) {
+                sumCollisions++;
                 int i = 0;
                 if (TESTING) System.out.println("Collision found!");
                 // Do a comparison of the actual strings
@@ -502,8 +510,10 @@ public class strMatch {
         
         // go through the source and search for the pattern
         while(!patternFound && (nextCharIndex < source.length)) {
+            baseTotal++;
             // compare scope so far
             if (srcHash == patHash) {
+                baseCollisions++;
                 i = 0;
                 if (TESTING) System.out.println("Collision found!");
 
@@ -1067,7 +1077,7 @@ public class strMatch {
             myPhrase = "RK ";
         }
         public boolean search(String pattern, byte[] source) {
-            return strMatch.rabinKarpMatchBASE(pattern, source);
+            return strMatch.rabinKarpMatchSUM(pattern, source);
         }
         public boolean search(String pattern, byte[] source, boolean USE_SUM) {
             if (USE_SUM)
@@ -1123,7 +1133,6 @@ public class strMatch {
         strMatch.BMooreMatch     bm = new strMatch.BMooreMatch();
         strMatch.Match[]    matches = {bf, rk, kmp, bm};
         Stopwatch sw = new Stopwatch(); // to collect stats
-
         boolean patternEofFound = false;
 
         // Get file set up
@@ -1187,13 +1196,24 @@ public class strMatch {
                     // Loop through each type of match algorithm and run experiment
                     for (strMatch.Match algorithm : matches) {                        
                         // Setup output
-                        if (STATS_ON) sw.start();
+                        if (STATS_ON) {
+                            // reset collision count and total count for each pattern
+                            sumCollisions   = 0;
+                            sumTotal        = 0;
+                            baseCollisions  = 0;
+                            baseTotal       = 0;
+                            sw.start();
+                        }
                         String output = algorithm.getMyPhrase(
                                             experimentWrapper(algorithm, strPattern, sourceFileName)
                                         ) + rawPattern + "\n";
                         if (STATS_ON) {
                             sw.stop();
                             System.out.println(algorithm.getMyName() + " time: " + sw.time());                            
+                            if (algorithm instanceof RabinKarpMatch) {
+                                System.out.println("SUM  >>> Collisions / Total Compares :: " + sumCollisions + " / " + sumTotal);
+                                System.out.println("BASE >>> Collisions / Total Compares :: " + baseCollisions + " / " + baseTotal);
+                            }
                         }
                         outFile.write((output).getBytes());
                     } // LOOP to next algorithm
