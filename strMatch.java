@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.Hashtable;
 
 public class strMatch {
     static boolean TESTING = false;
@@ -821,6 +822,10 @@ public class strMatch {
         return b;
     }
 
+	// Prevents the regeneration of the core tables, if they have already
+	// been created
+	static Hashtable<String, int[]> coreTables = new Hashtable<String, int[]>();
+
     /**
      * Iterative core building functionality that is O(3m) time,
      * where m is the length of the pattern.
@@ -831,14 +836,18 @@ public class strMatch {
      * @param p Byte array containing our pattern.
      * @return An array representing core table lengths
      */
-    protected static int[] buildCoreTable3(byte[] p)
+    protected static int[] buildCoreTable3(String pattern)
     {
+		if (coreTables.containsKey(pattern)) {
+			return coreTables.get(pattern);
+		}
         // The pattern length is the size of the table, since each core
         // calculation involves the next symbol in p[i+direction]
 
-        int[] table = new int[p.length+1];
-        int   i = 0;
-        int   coreLength = 0;
+		byte[] 	p 			= pattern.getBytes();
+        int[] 	table 		= new int[p.length+1];
+        int   	i 			= 0;
+        int   	coreLength 	= 0;
 
         table[0] = 0; // epsilon length value = 0
         // Start with the first value
@@ -871,7 +880,8 @@ public class strMatch {
             }
             i++;
         }
-
+		// Add entry to table
+		coreTables.put(pattern, table);
         return table;
     }
 
@@ -912,7 +922,7 @@ public class strMatch {
         getNextChunkCountRingByteBuffer(chunkCount, source, 0, byteRing);
         
         // Build the core table for our algorithm.
-        c = buildCoreTable3(pattern.getBytes());
+        c = buildCoreTable3(pattern);
         
         // note that the left most will always be 0 in our version
         // t = scope
@@ -968,7 +978,7 @@ public class strMatch {
         int     bytesToGrab = 0;
         boolean patternFound = false;
         String  scope = getNextChunkCountChars(chunkCount, source); // fill up the scope buffer
-        int[]   c = buildCoreTable3(pattern.getBytes());
+        int[]   c = buildCoreTable3(pattern);
 
         // Reset prevByte for our stream parser.
         prevByte = 0x00;
