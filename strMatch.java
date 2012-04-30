@@ -1,7 +1,7 @@
 /*
  *  Student information for assignment:
  *  Matthew McClure: Slip days used for this project: 0  Slip days used (total): 0
- *  Jasper Sone: Slip days used for this project: 0  Slip days used (total): 0
+ *  Jasper Sone: Slip days used for this project: 0  Slip days used (total): 1
  */
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -26,6 +26,7 @@ public class strMatch {
     // the previous chunk, for the 0x0D,0x0A Windows newline pattern.
     static byte prevByte = 0x00;
 
+    // begin McClure driving
     // Helper class for a rotating ring buffer.
     public static class RingByteBuffer {
         // Local data store for the Ring Buffer
@@ -112,7 +113,6 @@ public class strMatch {
         }
     }
     
-    // begin McClure driving
     /**
      * Helper function for fast exponentiation
      * 
@@ -155,6 +155,7 @@ public class strMatch {
     }
     // end McClure driving
 
+    // begin Sone driving
     /**
      * Grabs the first chunk of chars from the source file to kick off several types
      * of string matching algorithms
@@ -258,7 +259,7 @@ public class strMatch {
         
         return Math.max(endPoint - leftPoint, 0);
     }
-
+    
     /**
      * Brute force pattern matching algorithm.  Checks each source byte as 
      * the leftmost comparison with the pattern.
@@ -444,7 +445,9 @@ public class strMatch {
         }
         return patternFound;
     }
+    // end Sone driving
 
+    // begin McClure driving
     /**
      * Simple Rabin-Karp pattern matching using summation algorithm.  Since
      * we are using longs, the maximum sum we can have is 256+256+...+256 for
@@ -555,56 +558,9 @@ public class strMatch {
         }
         return patternFound;
     }
-    
-    /**
-     * 
-     * @param pattern
-     * @return
-     */
-    protected static String[] getKMPSubStrings(String pattern)
-    {
-        String[] substrings = new String[pattern.length() + 1];
-        // build array of strings that contain substrings
-        for (int i = 0; i <= pattern.length(); i++) {
-            substrings[i] = pattern.substring(0, i);
-        }
-        return substrings;
-    }
+    // end McClure driving
 
-    /**
-     * Given a string s, returns the longest core it can find (This is just for testing)
-     * @param s - string to search for a core within
-     * @return a substring of the search string s, of which is the longest pre/suffix
-     */
-    protected static String getCoreTest(String s, String[] substrings)
-    {
-        String core = "";
-        for (int i = 1; i < s.length(); i++) {
-            String tempCore = s.substring(0, i);
-            String tempS = s.substring(s.length() - i);
-            if (tempCore.equals(tempS) && tempS.length() != s.length()) {
-                core = tempCore;
-            }
-        }
-        return core;
-    }
-
-    /**
-     * Builds a table which contains a list of numbers which correspond to
-     * the length of the max core size of each substring of pattern
-     * @param pattern - the string to build the core table from
-     * @return an array of integers which indicate the length of each substring's core
-     */
-    protected static int[] buildCoreTable(String pattern)
-    {
-        String[] substrings = getKMPSubStrings(pattern);
-        int[] table = new int[substrings.length];
-        for (int i = 0; i < substrings.length; i++) {
-            table[i] = getCoreTest(substrings[i], substrings).length();
-        }
-        return table;
-    }
-
+    // begin Sone driving
     /**
      * Iterative core building functionality that is O(3m) time,
      * where m is the length of the pattern.
@@ -707,7 +663,9 @@ public class strMatch {
     // Prevents the regeneration of the core tables, if they have already
     // been created
     static Hashtable<String, int[]> coreTables = new Hashtable<String, int[]>();
-
+    // end Sone driving
+    
+    // begin McClure driving
     /**
      * Iterative core building functionality that is O(3m) time,
      * where m is the length of the pattern.
@@ -766,7 +724,9 @@ public class strMatch {
         coreTables.put(pattern, table);
         return table;
     }
-
+    // end McClure driving
+    
+    // begin Sone driving    
     /**
      * Implements the Knuth-Morris-Pratt algorithm as described
      * in CS337, Eberlein and "Theory in Programming Practice", Misra.
@@ -842,7 +802,9 @@ public class strMatch {
         }
         return patternFound;
     }
+    // end Sone driving
 
+    // begin McClure driving
     /**
      * Implementation of Boyer-Moore pattern matching algorithm
      * as described in CS337, Eberlein and 
@@ -941,7 +903,9 @@ public class strMatch {
         }
         return patternFound;
     }
-
+    // end McClure driving
+    
+    // begin Sone driving    
     /**
      * Experiment Wrapper takes a particular experiment and buffers the input
      * stream to ensure efficient processing of large files. This hides the
@@ -965,7 +929,7 @@ public class strMatch {
             long offset = 0;
             long size = f.length();
             int  overlapSize = pattern.length() - 1; // testing with full pattern length
-            int  chunkSize = Math.max(1000000,(pattern.length() * 10)); // 1000000 is best...
+            int  chunkSize = Math.max(15000000,(pattern.length() * 10)); // 1000000 is best...
 
             //TESTING = true;
             // Open a channel
@@ -1143,9 +1107,9 @@ public class strMatch {
 
             // Outer loop over all patterns in the pattern file
             while (!patternEofFound) {
-                int             patternAmpCount = 0;
+                int               patternAmpCount = 0;
                 String            strPattern         = new String("");
-                String            rawPattern        = new String("");
+                String            rawPattern         = new String("");
                 StringBuilder     rawTmp             = new StringBuilder("");
                 StringBuilder     strTmp             = new StringBuilder("");
 
@@ -1246,4 +1210,5 @@ public class strMatch {
         String outputFileName = args[2];
         runExperiments(patternFileName, sourceFileName, outputFileName);
     }
+    // end Sone driving
 }
