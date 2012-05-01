@@ -37,141 +37,6 @@ public class strMatchTest {
     }
     
     
-    /**
-	 * Test method for getKMPSubStrings(String)
-	 */
-	@Test
-	public void testGetKMPSubStrings_generalString() {
-		String pattern = "help";
-		String[] testResult = strMatch.getKMPSubStrings(pattern);
-		String[] expectedResult = {"", "h", "he", "hel","help"};
-		assertEquals(testResult.length, expectedResult.length);
-		for (int i = 0; i < expectedResult.length; i++) {
-			assertEquals(testResult[i], expectedResult[i]);
-		}
-	}
-
-	/**
-	 * Test method for getKMPSubStrings(String)
-	 */
-	@Test
-	public void testGetKMPSubStrings_emptyString() {
-		String pattern = "";
-		String[] testResult = strMatch.getKMPSubStrings(pattern);
-		String[] expectedResult = {""};
-		assertEquals(testResult.length, expectedResult.length);
-		for (int i = 0; i < expectedResult.length; i++) {
-			assertEquals(testResult[i], expectedResult[i]);
-		}
-	}
-
-	/**
-	 * Test method for getKMPSubStrings(String)
-	 */
-	@Test
-	public void testGetKMPSubStrings_crazyString() {
-		String pattern = "asuer9q2ur12nushv zkjfhasre9";
-		String[] testResult = strMatch.getKMPSubStrings(pattern);
-		String[] expectedResult = {"", "a", "as", "asu", "asue", "asuer", "asuer9",
-								   "asuer9q", "asuer9q2", "asuer9q2u", "asuer9q2ur",
-								   "asuer9q2ur1", "asuer9q2ur12", "asuer9q2ur12n",
-								   "asuer9q2ur12nu", "asuer9q2ur12nus", "asuer9q2ur12nush",
-								   "asuer9q2ur12nushv", "asuer9q2ur12nushv ",
-								   "asuer9q2ur12nushv z", "asuer9q2ur12nushv zk",
-								   "asuer9q2ur12nushv zkj", "asuer9q2ur12nushv zkjf",
-								   "asuer9q2ur12nushv zkjfh", "asuer9q2ur12nushv zkjfha",
-								   "asuer9q2ur12nushv zkjfhas", "asuer9q2ur12nushv zkjfhasr",
-								   "asuer9q2ur12nushv zkjfhasre", "asuer9q2ur12nushv zkjfhasre9"};
-		assertEquals(testResult.length, expectedResult.length);
-		for (int i = 0; i < expectedResult.length; i++) {
-			assertEquals(testResult[i], expectedResult[i]);
-		}
-	}
-	
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_emptyString() {
-		String substring = "";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "";
-		assertEquals(testResult, expectedResult);
-	}
-	
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_singleCharString() {
-		String substring = "a";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "";
-		assertEquals(testResult, expectedResult);
-	}
-
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_basic1() {
-		String substring = "ab";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "";
-		assertEquals(testResult, expectedResult);
-	}
-	
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_basic2() {
-		String substring = "aba";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "a";
-		assertEquals(testResult, expectedResult);
-	}
-	
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_basic3() {
-		String substring = "abab";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "ab";
-		assertEquals(testResult, expectedResult);
-	}
-	
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_basic4() {
-		String substring = "ababa";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "aba";
-		assertEquals(testResult, expectedResult);
-	}
-	
-	/**
-	 * Test method for getCore(String)
-	 */
-	@Test
-	public void testGetCore_basic5() {
-		String substring = "ababac";
-		String[] substrings = strMatch.getKMPSubStrings("ababac");
-		String testResult = strMatch.getCoreTest(substring, substrings);
-		String expectedResult = "";
-		assertEquals(testResult, expectedResult);
-	}
-
 	/**
 	 * Test method for buildCoreTable2(String)
 	 */
@@ -196,54 +61,11 @@ public class strMatchTest {
 	@Test
 	public void testBuildCoreTable3_basicPattern1() {
 		String pattern = new String("xabcabxab");
-		int[] testResult = strMatch.buildCoreTable3(pattern.getBytes());
+		int[] testResult = strMatch.buildCoreTable3(pattern);
 		int[] expectedResult = {0, 0, 0, 0, 0, 0, 0, 1, 2, 3};
 		assertEquals(testResult.length, expectedResult.length);
 		for (int i = 0; i < expectedResult.length; i++) {
 			assertEquals(expectedResult[i], testResult[i]);
-		}
-	}
-	
-	
-	/**
-	 * Test method for buildCoreTable(String)
-	 */
-	@Test
-	public void testBuildCoreTable_emptyPattern() {
-		String pattern = "";
-		int[] testResult = strMatch.buildCoreTable(pattern);
-		int[] expectedResult = {0};
-		assertEquals(testResult.length, expectedResult.length);
-		for (int i = 0; i < expectedResult.length; i++) {
-			assertEquals(testResult[i], expectedResult[i]);
-		}
-	}
-
-	/**
-	 * Test method for buildCoreTable(String)
-	 */
-	@Test
-	public void testBuildCoreTable_singleCharPattern() {
-		String pattern = "a";
-		int[] testResult = strMatch.buildCoreTable(pattern);
-		int[] expectedResult = {0, 0};
-		assertEquals(testResult.length, expectedResult.length);
-		for (int i = 0; i < expectedResult.length; i++) {
-			assertEquals(testResult[i], expectedResult[i]);
-		}
-	}
-
-	/**
-	 * Test method for buildCoreTable(String)
-	 */
-	@Test
-	public void testBuildCoreTable_basicPattern1() {
-		String pattern = "ababac";
-		int[] testResult = strMatch.buildCoreTable(pattern);
-		int[] expectedResult = {0, 0, 0, 1, 2, 3, 0};
-		assertEquals(testResult.length, expectedResult.length);
-		for (int i = 0; i < expectedResult.length; i++) {
-			assertEquals(testResult[i], expectedResult[i]);
 		}
 	}
 
@@ -286,58 +108,7 @@ public class strMatchTest {
 		assertEquals(expectedResult, testResult);
 	}
 	
-	/**
-	 * Testing Match between results of RK match using rolling sum and rolling base functions
-	 */
-	@Test
-	public void testRabinKarpMatch_sumMatch_equals_baseMatch() {
-		int testCount = 0;
-		int numTests = 10;
-		Stopwatch sw = new Stopwatch();
-		String pattern = "ark into the tabernacle";
-		String sourceFileName = "02_exodus.txt";
-		
-		double totalTimeSum = 0.0;
-		double totalTimeBase = 0.0;
-		
-		boolean smatch = false;
-		boolean bmatch = false;
-		
-		try {
-			FileInputStream sinput;
-			DataInputStream source;
-			
-			while (testCount < numTests) {
-				// run RK Match using rolling sum
-				sinput = new FileInputStream(sourceFileName);
-				source = new DataInputStream(sinput); 
 
-				sw.start();
-				smatch = strMatch.rabinKarpMatch(pattern, source, true);
-				sw.stop();
-				totalTimeSum += sw.time();
-			
-				// run RK Match using rolling base
-				sinput = new FileInputStream(sourceFileName);
-				source = new DataInputStream(sinput); 
-				
-				sw.start();
-				bmatch = strMatch.rabinKarpMatch(pattern, source, false);
-				sw.stop();
-				totalTimeBase += sw.time();
-				
-				assertEquals(smatch, bmatch);
-				// iterate to next test
-				testCount++;
-			}
-			System.out.println("Avg time for RKMatch (rolling sum) : " + (totalTimeSum / numTests));
-			System.out.println("Avg time for RKMatch (rolling base): " + (totalTimeBase / numTests));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}		
-	}
-	
 	/**
 	 * Test method for main(java.lang.String[])
 	 */
@@ -421,18 +192,11 @@ public class strMatchTest {
 		byte[] sourceArr = source.toString().getBytes();
 		
 		s.start();
-		try {
-			for (int i = 0; i < testCount; i++) {
-//				System.out.println("brute force test: " + i);
-				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
-				DataInputStream sourceStream = new DataInputStream(bstream);
-				found = strMatch.bruteForceMatch(pattern, sourceStream);
-				sourceStream.close();
-				assertEquals(false, found);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+		for (int i = 0; i < testCount; i++) {
+//			System.out.println("brute force test: " + i);
+			found = strMatch.bruteForceMatch(pattern, sourceArr);
+			assertEquals(false, found);
 		}
 		s.stop();
 		System.out.println("Average time for Brute Force 1: " + (s.time() / testCount));
@@ -455,18 +219,10 @@ public class strMatchTest {
 		byte[] sourceArr = source.toString().getBytes();
 		
 		s.start();
-		try {
-			for (int i = 0; i < testCount; i++) {
-//				System.out.println("brute force test: " + i);
-				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
-				DataInputStream sourceStream = new DataInputStream(bstream);
-				found = strMatch.rabinKarpMatch(pattern, sourceStream, true);
-				sourceStream.close();
-				assertEquals(false, found);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		for (int i = 0; i < testCount; i++) {
+//			System.out.println("brute force test: " + i);
+			found = strMatch.rabinKarpMatchSUM(pattern, sourceArr);
+			assertEquals(false, found);
 		}
 		s.stop();
 		System.out.println("Average time for Rabin-Karp 1: " + (s.time() / testCount));
@@ -491,18 +247,10 @@ public class strMatchTest {
 		byte[] sourceArr = source.toString().getBytes();
 		
 		s.start();
-		try {
-			for (int i = 0; i < testCount; i++) {
+		for (int i = 0; i < testCount; i++) {
 //				System.out.println("brute force test: " + i);
-				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
-				DataInputStream sourceStream = new DataInputStream(bstream);
-				found = strMatch.kmpMatch(pattern, sourceStream);
-				sourceStream.close();
-				assertEquals(false, found);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			found = strMatch.kmpMatch(pattern, sourceArr);
+			assertEquals(false, found);
 		}
 		s.stop();
 		System.out.println("Average time for KMP Match 1: " + (s.time() / testCount));
@@ -525,18 +273,11 @@ public class strMatchTest {
 		byte[] sourceArr = source.toString().getBytes();
 		
 		s.start();
-		try {
-			for (int i = 0; i < testCount; i++) {
-//				System.out.println("brute force test: " + i);
-				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
-				DataInputStream sourceStream = new DataInputStream(bstream);
-				found = strMatch.bmooreMatch(pattern, sourceStream);
-				sourceStream.close();
-				assertEquals(false, found);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+		for (int i = 0; i < testCount; i++) {
+//			System.out.println("brute force test: " + i);
+			found = strMatch.bmooreMatch(pattern, sourceArr);
+			assertEquals(false, found);
 		}
 		s.stop();
 		System.out.println("Average time for Boyer-Moore Match 1: " + (s.time() / testCount));
@@ -552,18 +293,10 @@ public class strMatchTest {
 		byte[] sourceArr = source.toString().getBytes();
 		
 		s.start();
-		try {
-			for (int i = 0; i < testCount; i++) {
+		for (int i = 0; i < testCount; i++) {
 //				System.out.println("brute force test: " + i);
-				ByteArrayInputStream bstream = new ByteArrayInputStream(sourceArr);		
-				DataInputStream sourceStream = new DataInputStream(bstream);
-				found = strMatch.bmooreMatch(pattern, sourceStream);
-				sourceStream.close();
-				assertEquals(false, found);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			found = strMatch.bmooreMatch(pattern, sourceArr);
+			assertEquals(false, found);
 		}
 		s.stop();
 		System.out.println("Average time for Boyer-Moore Match 1: " + (s.time() / testCount));
